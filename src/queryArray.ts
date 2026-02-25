@@ -32,24 +32,30 @@ import {
  * -------------------------------------------------------------------------
  */
 export class QueryArray<T> extends Array<T> {
+  protected _originalData: T[];
+
   public constructor(
     elements: T[],
-    protected _originalData: T[] = isArray(elements)
-      ? elements.slice(0, elements.length)
-      : [],
+    originalData?: T[],
     protected _currentLogic: "and" | "or" = "and",
   ) {
     if (isArray(elements)) {
       super(elements.length);
+      this._originalData = originalData ?? new Array(elements.length);
+
       let idx = elements.length;
       while (idx--) {
         this[idx] = elements[idx] as T;
+        if (!originalData) {
+          this._originalData[idx] = elements[idx] as T;
+        }
       }
 
       // native array methods will call with arguments other than an array; in
       // this case, just pass the data along to the regular constructor
     } else {
       super(elements);
+      this._originalData = [];
     }
   }
 
@@ -553,6 +559,8 @@ export class QueryArray<T> extends Array<T> {
       return out;
     };
 
-    return createNestableResolver((t) => (isFunction(key) ? key(t) : t?.[key]));
+    return createNestableResolver(
+      isFunction(key) ? (t) => key(t) as X : (t) => t?.[key] as X,
+    );
   }
 }
