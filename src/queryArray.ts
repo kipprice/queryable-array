@@ -5,19 +5,9 @@ import {
   type NestedPartial,
   type UnionToIntersection,
 } from "./_types";
-import { queryClause } from "./queryClause";
-import {
-  baseResolutionFunctions,
-  resolutionFunctions,
-} from "./queryClause.constants";
-import type {
-  ComparableQueryClause,
-  QueryClause,
-  QueryClauseResult,
-} from "./queryClause.types";
+import type { QueryClause } from "./queryClause.types";
 import {
   isArray,
-  isBoolean,
   isDefined,
   isFunction,
   isNumber,
@@ -27,11 +17,9 @@ import {
 import {
   applyLogicToFlattenedGroups,
   flattenWithGroups,
-  getKeys,
   isDeepEqual,
   isEqual,
   isMatch,
-  reLayerGroups,
 } from "./utils";
 
 /**-------------------------------------------------------------------------
@@ -369,7 +357,7 @@ export class QueryArray<T> extends Array<T> {
    * passed through the specified extract function.
    */
   public where<X>(keyOrFn: keyof T | ((t: T) => X)) {
-    return this._innerPerformanceWhere(keyOrFn);
+    return this._innerWhere(keyOrFn);
   }
 
   /**
@@ -391,195 +379,7 @@ export class QueryArray<T> extends Array<T> {
    * @returns A new QueryClause that can be resolved to filter the query array
    *          down based on further chained function calls.
    */
-  protected _innerWhere<X>(
-    keyOrFn: keyof T | ((t: T) => X),
-    myQueryClauses: QueryClause<X>[] = [],
-  ) {
-    const firstOriginalElem = this._originalData[0] ?? ({} as T);
-    let _isNegated = false;
-
-    let startTime = new Date();
-    const representativeQueryClause =
-      (myQueryClauses[0] as QueryClause<X>) ??
-      queryClause(
-        isFunction(keyOrFn)
-          ? keyOrFn(firstOriginalElem)
-          : (firstOriginalElem[keyOrFn] as X),
-      );
-    startTime = new Date();
-
-    const allKeys =
-      myQueryClauses.length > 0
-        ? myQueryClauses.flatMap((qc) => getKeys(qc))
-        : this._originalData
-            .filter((d) => !!d)
-            .flatMap((v) =>
-              getKeys(
-                queryClause(isFunction(keyOrFn) ? keyOrFn(v) : v?.[keyOrFn]),
-              ),
-            );
-    startTime = new Date();
-
-    const resolutionKeys = [
-      ...new Set(
-        allKeys.length > 0
-          ? allKeys
-          : (resolutionFunctions as (keyof QueryClause<X>)[]),
-      ),
-    ];
-    startTime = new Date();
-
-    const out = {
-      ...resolutionKeys
-        .filter((rKey) => resolutionFunctions.includes(rKey as any))
-        .reduce(
-          (acc, cur) => ({
-            ...acc,
-            [cur]: (...args: any[]) => {
-              const filteredArr =
-                this._currentLogic === "and" ? this : [...this._originalData];
-
-              for (let idx = filteredArr.length - 1; idx >= 0; idx -= 1) {
-                const t = filteredArr[idx] as T;
-                const x = isFunction(keyOrFn)
-                  ? keyOrFn(t)
-                  : (t?.[keyOrFn] as X);
-
-                let qc = myQueryClauses[idx] ?? queryClause(x);
-                if (_isNegated) {
-                  qc.not();
-                }
-                const result: QueryClauseResult<X> = isFunction(qc?.[cur])
-                  ? (qc[cur] as Function)(...args).result
-                  : false;
-
-                if (!result) {
-                  filteredArr.splice(idx, 1);
-                }
-              }
-
-              if (this._currentLogic === "or") {
-                return new QueryArray(
-                  [
-                    ...this._originalData.filter(
-                      (d) => this.includes(d) || filteredArr.includes(d),
-                    ),
-                  ],
-                  this._originalData,
-                );
-              } else {
-                return new QueryArray(filteredArr, this._originalData);
-              }
-            },
-          }),
-          {},
-        ),
-
-      not() {
-        _isNegated = !_isNegated;
-        return out;
-      },
-
-      ...(resolutionKeys.includes("its" as ElemType<typeof resolutionKeys>)
-        ? {
-            its: <K extends keyof X>(k: K) => {
-              const elemArr =
-                this._currentLogic === "and" ? this : this._originalData;
-              const valArr = elemArr.map((v) =>
-                isFunction(keyOrFn) ? keyOrFn(v) : v?.[keyOrFn],
-              );
-              const queryElems =
-                myQueryClauses.length > 0
-                  ? [...myQueryClauses]
-                  : valArr.map((e) => queryClause(e));
-
-              return new QueryArray(
-                this,
-                this._originalData,
-                this._currentLogic,
-              )._innerWhere(
-                (t) => t as X[K],
-                queryElems.map((mqc) => (mqc as any)?.its?.(k) ?? undefined),
-              );
-            },
-          }
-        : {}),
-
-      ...(resolutionKeys.includes("some" as ElemType<typeof resolutionKeys>)
-        ? {
-            some: () => {
-              const elemArr =
-                this._currentLogic === "and" ? this : this._originalData;
-              const valArr = elemArr.map((v) =>
-                isFunction(keyOrFn) ? keyOrFn(v) : v?.[keyOrFn],
-              );
-
-              const queryElems =
-                myQueryClauses.length > 0
-                  ? myQueryClauses
-                  : valArr.map((e) => queryClause(e));
-
-              return new QueryArray(
-                this,
-                this._originalData,
-                this._currentLogic,
-              )._innerWhere(
-                (t: T) => t as ElemType<X>,
-                queryElems.map((qe) => (qe as any)?.some?.() ?? undefined),
-              );
-            },
-          }
-        : {}),
-
-      ...(resolutionKeys.includes("every" as ElemType<typeof resolutionKeys>)
-        ? {
-            every: () => {
-              const elemArr =
-                this._currentLogic === "and" ? this : this._originalData;
-              const valArr = elemArr.map((v) =>
-                isFunction(keyOrFn) ? keyOrFn(v) : v?.[keyOrFn],
-              );
-
-              const queryElems =
-                myQueryClauses.length > 0
-                  ? myQueryClauses
-                  : valArr.map((e) => queryClause(e));
-
-              return new QueryArray(
-                this,
-                this._originalData,
-                this._currentLogic,
-              )._innerWhere(
-                (t: T) => t as ElemType<X>,
-                queryElems.map((qe) => (qe as any)?.every?.() ?? undefined),
-              );
-            },
-          }
-        : {}),
-    } as UnionToIntersection<QueryClause<X, QueryArray<T>>>;
-    return out;
-  }
-
-  /**
-   * perform a where query either on a caller-specified getter or via a set of
-   * query clauses that have already been queued up for our use by a previous
-   * iteration of the query array
-   *
-   * @param   keyOrFn
-   *          The method through which we should retrieve values for this query
-   *          array. Ignored if `myQueryClauses` is set.
-   *
-   * @param   myQueryClauses
-   *          If available, previous iterations of running this query arrays
-   *          values through a value extraction, then passed on to a query
-   *          clause. Largely used in cases when we are working with deeply
-   *          nested arrays or objects, as they have special handling built
-   *          into the query clause object to resolve deeply with type safety
-   *
-   * @returns A new QueryClause that can be resolved to filter the query array
-   *          down based on further chained function calls.
-   */
-  protected _innerPerformanceWhere<X>(key: keyof T | ((t: T) => X)) {
+  protected _innerWhere<X>(key: keyof T | ((t: T) => X)) {
     const createResolutionFns = <Z>(
       valueGetter: (t: T) => Z,
       arrayLogic: ("some" | "every")[] = [],
@@ -636,11 +436,7 @@ export class QueryArray<T> extends Array<T> {
 
         greaterThan: (y: ZE) =>
           _resolve((z: ZE) => {
-            if (isDefined(z) && !isNumber(z) && !isString(z)) {
-              throw new Error(
-                "cannot call 'greaterThan' on a non-comparable value",
-              );
-            } else if (isDefined(z)) {
+            if (isNumber(z) || isString(z)) {
               return z > y;
             } else {
               return false;
@@ -650,11 +446,7 @@ export class QueryArray<T> extends Array<T> {
 
         greaterThanOrEqualTo: (y: Z) =>
           _resolve((z: ZE) => {
-            if (isDefined(z) && !isNumber(z) && !isString(z)) {
-              throw new Error(
-                "cannot call 'greaterThanOrEqualTo' on a non-comparable value",
-              );
-            } else if (isDefined(z)) {
+            if (isNumber(z) || isString(z)) {
               return z >= y;
             } else {
               return false;
@@ -664,11 +456,7 @@ export class QueryArray<T> extends Array<T> {
 
         lessThan: (y: ZE) =>
           _resolve((z: ZE) => {
-            if (isDefined(z) && !isNumber(z) && !isString(z)) {
-              throw new Error(
-                "cannot call 'lessThan' on a non-comparable value",
-              );
-            } else if (isDefined(z)) {
+            if (isNumber(z) || isString(z)) {
               return z < y;
             } else {
               return false;
@@ -678,11 +466,7 @@ export class QueryArray<T> extends Array<T> {
 
         lessThanOrEqualTo: (y: ZE) =>
           _resolve((z: ZE) => {
-            if (isDefined(z) && !isNumber(z) && !isString(z)) {
-              throw new Error(
-                "cannot call 'lessThanOrEqualTo' on a non-comparable value",
-              );
-            } else if (isDefined(z)) {
+            if (isNumber(z) || isString(z)) {
               return z <= y;
             } else {
               return false;
@@ -692,10 +476,17 @@ export class QueryArray<T> extends Array<T> {
 
         matches: (y: NestedPartial<ZE>) =>
           _resolve((z: ZE) => {
-            if ((isDefined(z) && !isObjectOrArray(z)) || !isObjectOrArray(y)) {
-              throw new Error("cannot call 'matches' on a non-object");
-            } else if (isDefined(z)) {
+            if (isObjectOrArray(z) && isObjectOrArray(y)) {
               return isMatch(z, y);
+            } else {
+              return false;
+            }
+          }),
+
+        deepEquals: (y: ZE) =>
+          _resolve((z: ZE) => {
+            if (isObjectOrArray(z) && isObjectOrArray(y)) {
+              return isDeepEqual(z, y);
             } else {
               return false;
             }
@@ -703,9 +494,7 @@ export class QueryArray<T> extends Array<T> {
 
         includes: (y: ElemType<Z>) =>
           _resolve((z: ZE) => {
-            if (isDefined(z) && !isArray(z)) {
-              throw new Error("cannot call 'includes' on a non-array");
-            } else if (isDefined(z) && isArray(z)) {
+            if (isArray(z)) {
               return !!z.find((e) => isEqual(y, e));
             } else {
               return false;

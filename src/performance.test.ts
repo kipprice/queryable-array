@@ -14,7 +14,7 @@ describe("performance on small arrays (<100 elems)", () => {
     const queryDelta = +new Date() - +startQueryTime;
 
     expect(queryResult).to.eql(filterResult);
-    expect(queryDelta).to.be.lessThan(Math.max(filterDelta * 12, 10));
+    expect(queryDelta).to.be.lessThan(Math.max(filterDelta * 10, 10));
   });
 });
 
@@ -31,7 +31,7 @@ describe("performance on medium arrays (1000 - 10k elems)", () => {
     const queryDelta = +new Date() - +startQueryTime;
 
     expect(queryResult).to.eql(filterResult);
-    expect(queryDelta).to.be.lessThan(Math.max(filterDelta * 12, 10));
+    expect(queryDelta).to.be.lessThan(Math.max(filterDelta * 10, 10));
   });
 });
 
@@ -50,6 +50,6 @@ describe("performance on large arrays (> 10k elems)", () => {
     const queryDelta = +new Date() - +startQueryTime;
 
     expect(queryResult).to.eql(filterResult);
-    expect(queryDelta).to.be.lessThan(Math.max(filterDelta * 12, 10));
+    expect(queryDelta).to.be.lessThan(Math.max(filterDelta * 10, 10));
   });
 });

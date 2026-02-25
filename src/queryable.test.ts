@@ -240,6 +240,14 @@ describe("queryable", () => {
             .not.greaterThan(1),
         ).to.eql([{ a: 1 }, { a: 1 }]);
       });
+
+      it("ignores values that are undefined for greaterThan", () => {
+        expect(
+          queryable([{ a: 1 }, { a: 2 }, {}])
+            .where("a")
+            .greaterThan(1),
+        ).to.eql([{ a: 2 }]);
+      });
     });
 
     describe("greaterThanOrEqualTo", () => {
@@ -273,6 +281,14 @@ describe("queryable", () => {
             .where("a")
             .not.greaterThanOrEqualTo(2),
         ).to.eql([{ a: 1 }]);
+      });
+
+      it("ignores values that are undefined for greaterThanOrEqualTo", () => {
+        expect(
+          queryable([{ a: 1 }, { a: 2 }, {}])
+            .where("a")
+            .greaterThanOrEqualTo(1),
+        ).to.eql([{ a: 1 }, { a: 2 }]);
       });
     });
 
@@ -308,6 +324,14 @@ describe("queryable", () => {
             .not.lessThan(2),
         ).to.eql([{ a: 2 }]);
       });
+
+      it("ignores values that are undefined for lessThan", () => {
+        expect(
+          queryable([{ a: 1 }, { a: 2 }, {}])
+            .where("a")
+            .lessThan(2),
+        ).to.eql([{ a: 1 }]);
+      });
     });
 
     describe("lessThanOrEqualTo", () => {
@@ -335,12 +359,20 @@ describe("queryable", () => {
         ).to.eql([{ a: 1 }, { a: 2 }]);
       });
 
-      it("can filter out by 'greaterThanOrEqualTon' to a property name and value", () => {
+      it("can filter out by 'lessThanOrEqualTo' to a property name and value", () => {
         expect(
           queryable([{ a: 1 }, { a: 3 }, { a: 2 }])
             .where("a")
             .not.lessThanOrEqualTo(2),
         ).to.eql([{ a: 3 }]);
+      });
+
+      it("ignores values that are undefined for lessThanOrEqualTo", () => {
+        expect(
+          queryable([{ a: 1 }, { a: 2 }, {}])
+            .where("a")
+            .lessThanOrEqualTo(2),
+        ).to.eql([{ a: 1 }, { a: 2 }]);
       });
     });
 
@@ -384,6 +416,14 @@ describe("queryable", () => {
           queryable([{ a: [1, 2] }, { a: [2, 3] }, { a: [1, 3] }])
             .where("a")
             .not.includes(3),
+        ).to.eql([{ a: [1, 2] }]);
+      });
+
+      it("can handle when an array is empty or undefined", () => {
+        expect(
+          queryable([{ a: [1, 2] }, { a: [] }, {}])
+            .where("a")
+            .includes(2),
         ).to.eql([{ a: [1, 2] }]);
       });
     });
@@ -475,16 +515,50 @@ describe("queryable", () => {
         expect(
           queryable([{ a: { 1: "a", 2: "b" } }, { a: { 1: "c", 2: "d" } }])
             .where("a")
-            .matches({ 1: "c" }).first,
-        ).to.eql({ a: { 1: "c", 2: "d" } });
+            .matches({ 1: "c" }),
+        ).to.eql([{ a: { 1: "c", 2: "d" } }]);
       });
 
       it("can negate matching a partial object", () => {
         expect(
           queryable([{ a: { 1: "a", 2: "b" } }, { a: { 1: "c", 2: "d" } }])
             .where("a")
-            .not.matches({ 1: "c" }).first,
-        ).to.eql({ a: { 1: "a", 2: "b" } });
+            .not.matches({ 1: "c" }),
+        ).to.eql([{ a: { 1: "a", 2: "b" } }]);
+      });
+
+      it("can gracefully handle missing objects", () => {
+        expect(
+          queryable([{}, { a: { 1: "c", 2: "d" } }])
+            .where("a")
+            .matches({ 1: "c" }),
+        ).to.eql([{ a: { 1: "c", 2: "d" } }]);
+      });
+    });
+
+    describe("deepEquals", () => {
+      it("can verify a deep equality of an object", () => {
+        expect(
+          queryable([{ a: { 1: "a", 2: "b" } }, { a: { 1: "c", 2: "d" } }])
+            .where("a")
+            .deepEquals({ 2: "b", 1: "a" }),
+        ).to.eql([{ a: { 1: "a", 2: "b" } }]);
+      });
+
+      it("can negate deeply equalling an  object", () => {
+        expect(
+          queryable([{ a: { 1: "a", 2: "b" } }, { a: { 1: "c", 2: "d" } }])
+            .where("a")
+            .not.matches({ 1: "c", 2: "d" }),
+        ).to.eql([{ a: { 1: "a", 2: "b" } }]);
+      });
+
+      it("can gracefully handle missing objects", () => {
+        expect(
+          queryable([{}, { a: { 1: "c", 2: "d" } }])
+            .where("a")
+            .deepEquals({ 1: "c", 2: "d" }),
+        ).to.eql([{ a: { 1: "c", 2: "d" } }]);
       });
     });
 
