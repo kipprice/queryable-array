@@ -501,7 +501,7 @@ describe("queryable", () => {
         ]);
       });
 
-      it.only("use a negated 'some' to exclude matching elements by property name", () => {
+      it("use a negated 'some' to exclude matching elements by property name", () => {
         const data = [
           { id: 1, tags: ["A", "B"] },
           { id: 2, tags: ["B"] },

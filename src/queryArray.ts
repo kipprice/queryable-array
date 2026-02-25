@@ -560,6 +560,25 @@ export class QueryArray<T> extends Array<T> {
     return out;
   }
 
+  /**
+   * perform a where query either on a caller-specified getter or via a set of
+   * query clauses that have already been queued up for our use by a previous
+   * iteration of the query array
+   *
+   * @param   keyOrFn
+   *          The method through which we should retrieve values for this query
+   *          array. Ignored if `myQueryClauses` is set.
+   *
+   * @param   myQueryClauses
+   *          If available, previous iterations of running this query arrays
+   *          values through a value extraction, then passed on to a query
+   *          clause. Largely used in cases when we are working with deeply
+   *          nested arrays or objects, as they have special handling built
+   *          into the query clause object to resolve deeply with type safety
+   *
+   * @returns A new QueryClause that can be resolved to filter the query array
+   *          down based on further chained function calls.
+   */
   protected _innerPerformanceWhere<X>(key: keyof T | ((t: T) => X)) {
     const createResolutionFns = <Z>(
       valueGetter: (t: T) => Z,
@@ -617,67 +636,79 @@ export class QueryArray<T> extends Array<T> {
 
         greaterThan: (y: ZE) =>
           _resolve((z: ZE) => {
-            if (!isNumber(z) && !isString(z)) {
+            if (isDefined(z) && !isNumber(z) && !isString(z)) {
               throw new Error(
                 "cannot call 'greaterThan' on a non-comparable value",
               );
-            } else {
+            } else if (isDefined(z)) {
               return z > y;
+            } else {
+              return false;
             }
           }),
         gt: (y: ZE) => (out as any).greaterThan(y),
 
         greaterThanOrEqualTo: (y: Z) =>
           _resolve((z: ZE) => {
-            if (!isNumber(z) && !isString(z)) {
+            if (isDefined(z) && !isNumber(z) && !isString(z)) {
               throw new Error(
                 "cannot call 'greaterThanOrEqualTo' on a non-comparable value",
               );
-            } else {
+            } else if (isDefined(z)) {
               return z >= y;
+            } else {
+              return false;
             }
           }),
         gte: (y: ZE) => (out as any).greaterThanOrEqualTo(y),
 
         lessThan: (y: ZE) =>
           _resolve((z: ZE) => {
-            if (!isNumber(z) && !isString(z)) {
+            if (isDefined(z) && !isNumber(z) && !isString(z)) {
               throw new Error(
                 "cannot call 'lessThan' on a non-comparable value",
               );
-            } else {
+            } else if (isDefined(z)) {
               return z < y;
+            } else {
+              return false;
             }
           }),
         lt: (y: ZE) => (out as any).lessThan(y),
 
         lessThanOrEqualTo: (y: ZE) =>
           _resolve((z: ZE) => {
-            if (!isNumber(z) && !isString(z)) {
+            if (isDefined(z) && !isNumber(z) && !isString(z)) {
               throw new Error(
                 "cannot call 'lessThanOrEqualTo' on a non-comparable value",
               );
-            } else {
+            } else if (isDefined(z)) {
               return z <= y;
+            } else {
+              return false;
             }
           }),
         lte: (y: ZE) => (out as any).lessThanOrEqualTo(y),
 
         matches: (y: NestedPartial<ZE>) =>
           _resolve((z: ZE) => {
-            if (!isObjectOrArray(z) || !isObjectOrArray(y)) {
+            if ((isDefined(z) && !isObjectOrArray(z)) || !isObjectOrArray(y)) {
               throw new Error("cannot call 'matches' on a non-object");
-            } else {
+            } else if (isDefined(z)) {
               return isMatch(z, y);
+            } else {
+              return false;
             }
           }),
 
         includes: (y: ElemType<Z>) =>
           _resolve((z: ZE) => {
-            if (!isArray(z)) {
+            if (isDefined(z) && !isArray(z)) {
               throw new Error("cannot call 'includes' on a non-array");
-            } else {
+            } else if (isDefined(z) && isArray(z)) {
               return !!z.find((e) => isEqual(y, e));
+            } else {
+              return false;
             }
           }),
       } as unknown as QueryClause<Z, QueryArray<T>>;
@@ -733,6 +764,6 @@ export class QueryArray<T> extends Array<T> {
       return out;
     };
 
-    return createNestableResolver((t) => (isFunction(key) ? key(t) : t[key]));
+    return createNestableResolver((t) => (isFunction(key) ? key(t) : t?.[key]));
   }
 }

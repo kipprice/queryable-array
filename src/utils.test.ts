@@ -30,6 +30,16 @@ describe("utils", () => {
       const keys: (keyof typeof obj)[] = getKeys(obj);
       expect(true).to.be.true;
     });
+
+    it("fails gracefully when the elem provided isn't an object", () => {
+      expect(getKeys(7 as any)).to.eql([]);
+    });
+    it("fails gracefully when the elem provided is undefined", () => {
+      expect(getKeys(undefined as any)).to.eql([]);
+    });
+    it("fails gracefully when the elem provided is null", () => {
+      expect(getKeys(null as any)).to.eql([]);
+    });
   });
 
   describe("arrayToMap", () => {
@@ -413,6 +423,14 @@ describe("utils", () => {
         END_GROUP_DIVIDER,
       ]);
     });
+
+    it("can fail gracefully when the array provided is undefined", () => {
+      expect(flattenWithGroups(undefined as any)).to.be.undefined;
+    });
+
+    it("can fail gracefully when the array provided is null", () => {
+      expect(flattenWithGroups(null as any)).to.be.null;
+    });
   });
 
   describe("reLayerGroups", () => {
@@ -596,6 +614,18 @@ describe("utils", () => {
           (x) => ["lion", "bear"].includes(x),
         ),
       ).to.be.true;
+    });
+
+    it("requires that any given group have at least one value to return true", () => {
+      const arr = [[{ id: "1" }, { id: "2" }], []];
+      const flatArr = flattenWithGroups(arr);
+      expect(
+        applyLogicToFlattenedGroups(
+          flatArr,
+          ["every", "some"],
+          (x) => x.id == "2",
+        ),
+      ).to.be.false;
     });
   });
 });

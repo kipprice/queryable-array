@@ -1,7 +1,5 @@
-import { getKeys } from "./utils";
-import { isArray, isObjectOrArray } from "./typeChecks";
-import type { ElemType, Queryable } from "./_types";
 import { QueryArray } from "./queryArray";
+import { isArray } from "./typeChecks";
 
 /**----------------------------------------------------------------------------
  * queryable

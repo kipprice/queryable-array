@@ -207,6 +207,10 @@ export const flattenWithGroups = <
 >(
   arr: (E | typeof START_GROUP_DIVIDER | typeof END_GROUP_DIVIDER)[],
 ) => {
+  if (!isDefined(arr)) {
+    return arr;
+  }
+
   return arr
     .map((e) =>
       isArray(e) ? [START_GROUP_DIVIDER, ...e, END_GROUP_DIVIDER] : [e],
@@ -307,9 +311,9 @@ export const applyLogicToFlattenedGroups = <E = any>(
         }
 
         const group = resolved.slice(lastStartIdx + 1, idx) as E[];
-        const groupResolution = group[arrayLogic[layer]!]((e) =>
-          isBoolean(e) ? e : resolver(e),
-        );
+        const groupResolution =
+          group.length > 0 &&
+          group[arrayLogic[layer]!]((e) => (isBoolean(e) ? e : resolver(e)));
         resolved.splice(lastStartIdx, idx - lastStartIdx + 1, groupResolution);
         idx = lastStartIdx;
         lastStartIdx = -1;
@@ -318,10 +322,13 @@ export const applyLogicToFlattenedGroups = <E = any>(
   }
 
   // the final resolution happens at the top level of the resolved array and returns just a single boolean
-  return resolved[arrayLogic[0]!]((e) => {
-    if (e === START_GROUP_DIVIDER || e === END_GROUP_DIVIDER) {
-      throw new Error("too few array logics passed");
-    }
-    return isBoolean(e) ? e : resolver(e as E);
-  });
+  return (
+    resolved.length > 0 &&
+    resolved[arrayLogic[0]!]((e) => {
+      if (e === START_GROUP_DIVIDER || e === END_GROUP_DIVIDER) {
+        throw new Error("too few array logics passed");
+      }
+      return isBoolean(e) ? e : resolver(e as E);
+    })
+  );
 };
