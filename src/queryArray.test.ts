@@ -331,12 +331,10 @@ describe("query array", () => {
     describe("not", () => {
       it("can exclude instead of include based on a simple query", () => {
         const data = ["a", "b", "c"];
-        expect(
-          new QueryArray(data)
-            .where((x) => x)
-            .not()
-            .is("b"),
-        ).to.eql(["a", "c"]);
+        expect(new QueryArray(data).where((x) => x).not.is("b")).to.eql([
+          "a",
+          "c",
+        ]);
       });
 
       it("can exclude within only one logical part of the query", () => {
@@ -344,8 +342,7 @@ describe("query array", () => {
         expect(
           new QueryArray(data)
             .where("id")
-            .not()
-            .is("b")
+            .not.is("b")
             .and.where("id")
             .greaterThan("b"),
         ).to.eql([{ id: "c" }]);
@@ -356,11 +353,9 @@ describe("query array", () => {
         expect(
           new QueryArray(data)
             .where("id")
-            .not()
-            .is("b")
+            .not.is("b")
             .and.where("id")
-            .not()
-            .is("c"),
+            .not.is("c"),
         ).to.eql([{ id: "a" }]);
       });
     });
@@ -460,22 +455,31 @@ describe("query array", () => {
           {
             id: "a",
             roles: [
-              ["r1", "Artist"],
-              ["r2", "Backpacker"],
+              [
+                ["r1", "Artist"],
+                ["r2", "Backpacker"],
+              ],
             ],
           },
           {
             id: "b",
             roles: [
-              ["r2", "Backpacker"],
-              ["r3", "Musician"],
+              [
+                ["r2", "Backpacker"],
+                ["r3", "Musician"],
+              ],
             ],
           },
-          { id: "c", roles: [["r1", "Artist"]] },
+          { id: "c", roles: [[["r1", "Artist"]]] },
         ];
 
         expect(
-          new QueryArray(data).where("roles").some().some().is("Artist"),
+          new QueryArray(data)
+            .where("roles")
+            .some("role")
+            .some("extra arbitrary layer")
+            .some("role identifier")
+            .is("Artist"),
         ).to.eql([data[0], data[2]]);
       });
 
@@ -586,25 +590,20 @@ describe("query array", () => {
         const data = [
           {
             id: "a",
-            roles: [
-              [1, "Artist"],
-              [2, "Backpacker"],
-            ],
+            roles: [[[1, "Artist"]], [[2, "Backpacker"]]],
           },
           {
             id: "b",
-            roles: [
-              [2, "Backpacker"],
-              [3, "Musician"],
-            ],
+            roles: [[[2, "Backpacker"]], [[3, "Musician"]]],
           },
-          { id: "c", roles: [[2, "Artist"]] },
+          { id: "c", roles: [[[2, "Artist"]]] },
         ];
 
         expect(
           new QueryArray(data)
             .where("roles")
             .every("role")
+            .every("extra arbitrary layer")
             .every("role identifier")
             .satisfies((x) => isString(x) || x < 3),
         ).to.eql([data[0], data[2]]);
@@ -693,10 +692,6 @@ describe("query array", () => {
           { id: "c", roles: [[2, "Artist"]] },
         ];
 
-        const qa = new QueryArray(data)
-          .where("roles")
-          .every("role")
-          .some("role identifier");
         expect(
           new QueryArray(data)
             .where("roles")
@@ -704,6 +699,14 @@ describe("query array", () => {
             .some("role identifier")
             .is("Artist"),
         ).to.eql([data[2]]);
+
+        expect(
+          new QueryArray(data)
+            .where("roles")
+            .some("role")
+            .every("role identifier")
+            .is("Artist"),
+        ).to.eql([]);
       });
     });
 

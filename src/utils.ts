@@ -1,6 +1,8 @@
-import type { Key, NestedPartial } from "./_types";
+import { resolve } from "node:dns";
+import type { ElemType, Key, NestedPartial } from "./_types";
 import {
   isArray,
+  isBoolean,
   isDefined,
   isObject,
   isObjectOrArray,
@@ -209,7 +211,11 @@ export const flattenWithGroups = <
     .map((e) =>
       isArray(e) ? [START_GROUP_DIVIDER, ...e, END_GROUP_DIVIDER] : [e],
     )
-    .flat(1) as (E | typeof START_GROUP_DIVIDER | typeof END_GROUP_DIVIDER)[];
+    .flat(1) as (
+    | ElemType<E>
+    | typeof START_GROUP_DIVIDER
+    | typeof END_GROUP_DIVIDER
+  )[];
 };
 
 /**
@@ -253,4 +259,69 @@ export const reLayerGroups = <E = any>(
   }
 
   return layers[0];
+};
+
+/**
+ * given an array of array logic commands (i.e. "some" or "every"), loops
+ * through a flattened set of data to verify whether the chain of these array
+ * logic commands are ultimately accepted or rejected
+ *
+ * @param   arr
+ *          The flattened array of values to loop over and apply array logic to
+ *
+ * @param   arrayLogic
+ *          The logic in the array to apply
+ *
+ * @param   resolver
+ *          The function to use to resolve a value in the provided array
+ *
+ * @returns True if the ultimate chain of array logic resolved to true;
+ *          false otherwise
+ */
+export const applyLogicToFlattenedGroups = <E = any>(
+  arr: (E | typeof START_GROUP_DIVIDER | typeof END_GROUP_DIVIDER)[],
+  arrayLogic: ("some" | "every")[],
+  resolver: (e: E) => boolean,
+) => {
+  let lastStartIdx = -1;
+  let resolved: Array<
+    E | boolean | typeof START_GROUP_DIVIDER | typeof END_GROUP_DIVIDER
+  > = Array.from(arr);
+
+  // loop through all but the first logic layer to start combining values in the
+  // array
+  for (let layer = arrayLogic.length - 1; layer > 0; layer -= 1) {
+    for (let idx = 0; idx < resolved.length; idx += 1) {
+      const e = resolved[idx];
+
+      // keep track of the start of the group we will end up evaluating
+      if (e === START_GROUP_DIVIDER) {
+        lastStartIdx = idx;
+
+        // once we hit the end of the current group, replace the original
+        // values with the resolved values, based on the current logic layer
+      } else if (e === END_GROUP_DIVIDER) {
+        // only close out a group if we know where the start of the group was
+        if (lastStartIdx === -1) {
+          continue;
+        }
+
+        const group = resolved.slice(lastStartIdx + 1, idx) as E[];
+        const groupResolution = group[arrayLogic[layer]!]((e) =>
+          isBoolean(e) ? e : resolver(e),
+        );
+        resolved.splice(lastStartIdx, idx - lastStartIdx + 1, groupResolution);
+        idx = lastStartIdx;
+        lastStartIdx = -1;
+      }
+    }
+  }
+
+  // the final resolution happens at the top level of the resolved array and returns just a single boolean
+  return resolved[arrayLogic[0]!]((e) => {
+    if (e === START_GROUP_DIVIDER || e === END_GROUP_DIVIDER) {
+      throw new Error("too few array logics passed");
+    }
+    return isBoolean(e) ? e : resolver(e as E);
+  });
 };

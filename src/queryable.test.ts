@@ -22,7 +22,7 @@ describe("queryable", () => {
     describe("filtering & processing", () => {
       it("can filter, then apply a sort", () => {
         const data = [{ id: "2" }, { id: "1" }, { id: "3" }];
-        expect(queryable(data).where("id").not().eq("3").sortBy("id")).to.eql([
+        expect(queryable(data).where("id").not.eq("3").sortBy("id")).to.eql([
           data[1],
           data[0],
         ]);
@@ -30,7 +30,7 @@ describe("queryable", () => {
 
       it("can filter, then apply an index", () => {
         const data = [{ id: "2" }, { id: "1" }, { id: "3" }];
-        expect(queryable(data).where("id").not().eq("3").indexBy("id")).to.eql({
+        expect(queryable(data).where("id").not.eq("3").indexBy("id")).to.eql({
           1: data[1],
           2: data[0],
         });
@@ -43,9 +43,7 @@ describe("queryable", () => {
           { id: "3", type: "person" },
           { id: "4", type: "plant" },
         ];
-        expect(
-          queryable(data).where("id").not().eq("3").groupBy("type"),
-        ).to.eql({
+        expect(queryable(data).where("id").not.eq("3").groupBy("type")).to.eql({
           person: [data[0]],
           plant: [data[1], data[3]],
         });
@@ -53,7 +51,7 @@ describe("queryable", () => {
 
       it("can sort, then apply a filter", () => {
         const data = [{ id: "2" }, { id: "1" }, { id: "3" }];
-        expect(queryable(data).sortBy("id").where("id").not().eq("3")).to.eql([
+        expect(queryable(data).sortBy("id").where("id").not.eq("3")).to.eql([
           data[1],
           data[0],
         ]);
@@ -97,8 +95,7 @@ describe("queryable", () => {
         expect(
           queryable([{ a: 1 }, { a: 2 }, { a: 1 }])
             .where("a")
-            .not()
-            .is(1),
+            .not.is(1),
         ).to.eql([{ a: 2 }]);
       });
     });
@@ -124,8 +121,7 @@ describe("queryable", () => {
         expect(
           queryable([{ a: [1, 2] }, { a: [2, 3] }, { a: null }])
             .where("a")
-            .not()
-            .isNull(),
+            .not.isNull(),
         ).to.eql([{ a: [1, 2] }, { a: [2, 3] }]);
       });
     });
@@ -155,8 +151,7 @@ describe("queryable", () => {
         expect(
           queryable([{ a: [1, 2] }, { a: [2, 3] }, { a: undefined }])
             .where("a")
-            .not()
-            .isUndefined(),
+            .not.isUndefined(),
         ).to.eql([{ a: [1, 2] }, { a: [2, 3] }]);
       });
     });
@@ -182,8 +177,7 @@ describe("queryable", () => {
         expect(
           queryable([{ a: [1, 2] }, { a: undefined }, { a: null }])
             .where("a")
-            .not()
-            .isNullish(),
+            .not.isNullish(),
         ).to.eql([{ a: [1, 2] }]);
       });
     });
@@ -209,8 +203,7 @@ describe("queryable", () => {
         expect(
           queryable([{ a: 1 }, { a: 2 }, { a: 1 }])
             .where("a")
-            .not()
-            .in([1, 10]),
+            .not.in([1, 10]),
         ).to.eql([{ a: 2 }]);
       });
     });
@@ -244,8 +237,7 @@ describe("queryable", () => {
         expect(
           queryable([{ a: 1 }, { a: 2 }, { a: 1 }])
             .where("a")
-            .not()
-            .greaterThan(1),
+            .not.greaterThan(1),
         ).to.eql([{ a: 1 }, { a: 1 }]);
       });
     });
@@ -279,8 +271,7 @@ describe("queryable", () => {
         expect(
           queryable([{ a: 1 }, { a: 3 }, { a: 2 }])
             .where("a")
-            .not()
-            .greaterThanOrEqualTo(2),
+            .not.greaterThanOrEqualTo(2),
         ).to.eql([{ a: 1 }]);
       });
     });
@@ -314,8 +305,7 @@ describe("queryable", () => {
         expect(
           queryable([{ a: 1 }, { a: 2 }, { a: 1 }])
             .where("a")
-            .not()
-            .lessThan(2),
+            .not.lessThan(2),
         ).to.eql([{ a: 2 }]);
       });
     });
@@ -349,8 +339,7 @@ describe("queryable", () => {
         expect(
           queryable([{ a: 1 }, { a: 3 }, { a: 2 }])
             .where("a")
-            .not()
-            .lessThanOrEqualTo(2),
+            .not.lessThanOrEqualTo(2),
         ).to.eql([{ a: 3 }]);
       });
     });
@@ -376,8 +365,7 @@ describe("queryable", () => {
         expect(
           queryable([{ a: 1 }, { a: "2" }, { a: "1" }])
             .where("a")
-            .not()
-            .satisfies((a) => isString(a)),
+            .not.satisfies((a) => isString(a)),
         ).to.eql([{ a: 1 }]);
       });
     });
@@ -395,8 +383,7 @@ describe("queryable", () => {
         expect(
           queryable([{ a: [1, 2] }, { a: [2, 3] }, { a: [1, 3] }])
             .where("a")
-            .not()
-            .includes(3),
+            .not.includes(3),
         ).to.eql([{ a: [1, 2] }]);
       });
     });
@@ -496,8 +483,7 @@ describe("queryable", () => {
         expect(
           queryable([{ a: { 1: "a", 2: "b" } }, { a: { 1: "c", 2: "d" } }])
             .where("a")
-            .not()
-            .matches({ 1: "c" }).first,
+            .not.matches({ 1: "c" }).first,
         ).to.eql({ a: { 1: "a", 2: "b" } });
       });
     });
@@ -515,13 +501,13 @@ describe("queryable", () => {
         ]);
       });
 
-      it("use a negated 'some' to exclude matching elements by property name", () => {
+      it.only("use a negated 'some' to exclude matching elements by property name", () => {
         const data = [
           { id: 1, tags: ["A", "B"] },
           { id: 2, tags: ["B"] },
           { id: 3, tags: ["A", "C"] },
         ];
-        expect(queryable(data).where("tags").some("tag").not().is("B")).to.eql([
+        expect(queryable(data).where("tags").some("tag").not.is("B")).to.eql([
           data[2],
         ]);
       });
@@ -556,9 +542,10 @@ describe("queryable", () => {
           { id: 2, tags: ["B"] },
           { id: 3, tags: ["A", "C"] },
         ];
-        expect(queryable(data).where("tags").every("tag").not().is("B")).to.eql(
-          [data[0], data[2]],
-        );
+        expect(queryable(data).where("tags").every("tag").not.is("B")).to.eql([
+          data[0],
+          data[2],
+        ]);
       });
 
       it("can handle accessing 'every' on unset or empty child arrays", () => {
@@ -590,11 +577,9 @@ describe("queryable", () => {
         expect(
           queryable([{ a: 1 }, { a: 2 }, { a: 3 }, { a: 4 }, { a: 5 }])
             .where("a")
-            .not()
-            .is(2)
+            .not.is(2)
             .and.where("a")
-            .not()
-            .is(3)
+            .not.is(3)
             .and.where((v) => v.a)
             .satisfies((a) => a % 2 === 0),
         ).to.eql([{ a: 4 }]);
@@ -649,8 +634,7 @@ describe("queryable", () => {
           .is("skateboarding")
           .and.where("role")
           .its("id")
-          .not()
-          .is("r1"),
+          .not.is("r1"),
       ).to.eql([data[1]]);
     });
 

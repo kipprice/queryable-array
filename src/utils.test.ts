@@ -10,6 +10,7 @@ import {
   reLayerGroups,
   END_GROUP_DIVIDER,
   isDeepEqual,
+  applyLogicToFlattenedGroups,
 } from "./utils";
 import { describe, it, expect } from "vitest";
 import type { Key, NestedPartial } from "./_types";
@@ -484,6 +485,117 @@ describe("utils", () => {
 
       const flattenedThrice = flattenWithGroups(flattenedTwice);
       expect(reLayerGroups(flattenedThrice)).to.eql(complexArray);
+    });
+  });
+
+  describe("applyLogicToFlattenedGroups", () => {
+    it("can apply a single layer of array logic to a singly-layered array", () => {
+      const arr = [{ id: "1" }, { id: "2" }, { id: "3" }];
+      expect(applyLogicToFlattenedGroups(arr, ["some"], (x) => x.id == "2")).to
+        .be.true;
+    });
+
+    it("can apply a single layer of array logic to a doubly-layered array", () => {
+      const arr = [[{ id: "1" }, { id: "2" }], [{ id: "3" }]];
+      const flatArr = flattenWithGroups(arr);
+      expect(
+        applyLogicToFlattenedGroups(
+          flatArr,
+          ["some", "some"],
+          (x) => x.id == "2",
+        ),
+      ).to.be.true;
+    });
+
+    it("can apply a single layer of array logic to a triply-layered array", () => {
+      const arr = [[[{ id: "1" }], [{ id: "2" }]], [[{ id: "3" }]]];
+      const flatArr = flattenWithGroups(arr);
+      const doublyFlatArr = flattenWithGroups(flatArr);
+      expect(
+        applyLogicToFlattenedGroups(
+          doublyFlatArr,
+          ["some", "some", "some"],
+          (x) => x.id == "2",
+        ),
+      ).to.be.true;
+    });
+
+    it("throws an error if there are not enough logics passed to resolve", () => {
+      const arr = [[{ id: "1" }, { id: "2" }], [{ id: "3" }]];
+      const flatArr = flattenWithGroups(arr);
+      expect(() =>
+        applyLogicToFlattenedGroups(flatArr, ["some"], (x) => x.id == "2"),
+      ).to.throw();
+    });
+
+    it("can alternate logics", () => {
+      const data = [[["lion", "tiger"]], [["bear"], ["zebra", "lion"]]];
+      const flatArr = flattenWithGroups(data);
+      const doublyFlatArr = flattenWithGroups(flatArr);
+
+      expect(
+        applyLogicToFlattenedGroups(
+          doublyFlatArr,
+          ["every", "every", "every"],
+          (x) => ["lion", "bear"].includes(x),
+        ),
+      ).to.be.false;
+
+      expect(
+        applyLogicToFlattenedGroups(
+          doublyFlatArr,
+          ["some", "some", "some"],
+          (x) => ["lion", "bear"].includes(x),
+        ),
+      ).to.be.true;
+
+      expect(
+        applyLogicToFlattenedGroups(
+          doublyFlatArr,
+          ["some", "every", "every"],
+          (x) => ["lion", "bear"].includes(x),
+        ),
+      ).to.be.false;
+
+      expect(
+        applyLogicToFlattenedGroups(
+          doublyFlatArr,
+          ["some", "every", "some"],
+          (x) => ["lion", "bear"].includes(x),
+        ),
+      ).to.be.true;
+
+      expect(
+        applyLogicToFlattenedGroups(
+          doublyFlatArr,
+          ["some", "some", "every"],
+          (x) => ["lion", "bear"].includes(x),
+        ),
+      ).to.be.true;
+
+      expect(
+        applyLogicToFlattenedGroups(
+          doublyFlatArr,
+          ["every", "some", "some"],
+          (x) => ["lion", "bear"].includes(x),
+        ),
+      ).to.be.true;
+
+      expect(
+        applyLogicToFlattenedGroups(
+          doublyFlatArr,
+          ["every", "some", "every"],
+          (x) => ["lion", "bear"].includes(x),
+        ),
+      ).to.be.false;
+
+      expect(
+        applyLogicToFlattenedGroups(
+          doublyFlatArr,
+          ["every", "every", "some"],
+          (x) => ["lion", "bear"].includes(x),
+        ),
+      ).to.be.true;
     });
   });
 });

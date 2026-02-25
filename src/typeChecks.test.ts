@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   isArray,
+  isBoolean,
   isDefined,
   isFunction,
   isKey,
@@ -14,6 +15,7 @@ import {
 const testValues: [string, any][] = [
   ["string", "string"],
   ["number", 0],
+  ["boolean", false],
   ["symbol", Symbol("*")],
   ["array", ["a", "b", "c"]],
   ["object", { a: 1, b: 2, c: 3 }],
@@ -45,6 +47,19 @@ describe("typechecks", () => {
       "isNumber(%s) returns %s",
       (name: string, expectedResult: boolean, value: unknown) => {
         expect(isNumber(value)).to.eq(expectedResult);
+      },
+    );
+  });
+
+  describe("isBoolean", () => {
+    it.each(
+      testValues.map(([key, value]) =>
+        key === "boolean" ? [key, true, value] : [key, false, value],
+      ),
+    )(
+      "isBoolean(%s) returns %s",
+      (name: string, expectedResult: boolean, value: unknown) => {
+        expect(isBoolean(value)).to.eq(expectedResult);
       },
     );
   });

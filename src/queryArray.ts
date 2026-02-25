@@ -2,6 +2,7 @@ import {
   SortOrder,
   type ElemType,
   type Key,
+  type NestedPartial,
   type UnionToIntersection,
 } from "./_types";
 import { queryClause } from "./queryClause";
@@ -9,9 +10,29 @@ import {
   baseResolutionFunctions,
   resolutionFunctions,
 } from "./queryClause.constants";
-import type { QueryClause, QueryClauseResult } from "./queryClause.types";
-import { isArray, isFunction } from "./typeChecks";
-import { getKeys, isDeepEqual, isEqual } from "./utils";
+import type {
+  ComparableQueryClause,
+  QueryClause,
+  QueryClauseResult,
+} from "./queryClause.types";
+import {
+  isArray,
+  isBoolean,
+  isDefined,
+  isFunction,
+  isNumber,
+  isObjectOrArray,
+  isString,
+} from "./typeChecks";
+import {
+  applyLogicToFlattenedGroups,
+  flattenWithGroups,
+  getKeys,
+  isDeepEqual,
+  isEqual,
+  isMatch,
+  reLayerGroups,
+} from "./utils";
 
 /**-------------------------------------------------------------------------
  * QueryArray
@@ -26,25 +47,15 @@ export class QueryArray<T> extends Array<T> {
   public constructor(
     elements: T[],
     protected _originalData: T[] = isArray(elements)
-      ? Array.from(elements)
+      ? elements.slice(0, elements.length)
       : [],
     protected _currentLogic: "and" | "or" = "and",
   ) {
     if (isArray(elements)) {
-      // when there is just a single element, in order to avoid a situation
-      // where the array constructor interprets the value as a length (i.e.
-      // when we are filtering an array of numbers with just a single value),
-      // we instead queue up an empty array and push the single value into it
-      if (elements.length === 1) {
-        super();
-        this.push(elements[0] as T);
-      } else {
-        if (elements.length > 10000) {
-          super();
-          elements.forEach((e) => this.push(e));
-        } else {
-          super(...elements);
-        }
+      super(elements.length);
+      let idx = elements.length;
+      while (idx--) {
+        this[idx] = elements[idx] as T;
       }
 
       // native array methods will call with arguments other than an array; in
@@ -358,7 +369,7 @@ export class QueryArray<T> extends Array<T> {
    * passed through the specified extract function.
    */
   public where<X>(keyOrFn: keyof T | ((t: T) => X)) {
-    return this._innerWhere(keyOrFn);
+    return this._innerPerformanceWhere(keyOrFn);
   }
 
   /**
@@ -547,5 +558,181 @@ export class QueryArray<T> extends Array<T> {
         : {}),
     } as UnionToIntersection<QueryClause<X, QueryArray<T>>>;
     return out;
+  }
+
+  protected _innerPerformanceWhere<X>(key: keyof T | ((t: T) => X)) {
+    const createResolutionFns = <Z>(
+      valueGetter: (t: T) => Z,
+      arrayLogic: ("some" | "every")[] = [],
+      negated = false,
+    ) => {
+      type ZE = Z extends Array<unknown> ? ElemType<Z> : Z;
+
+      const _resolve = <Z>(resolver: (z: ZE) => boolean) => {
+        const elems =
+          this._currentLogic === "and"
+            ? this
+            : this._originalData.slice(0, this._originalData.length);
+
+        const filteredElems = elems.filter((t) => {
+          // automatically include anything that has already been filtered in when using an or operator
+          if (this._currentLogic === "or" && this.includes(t)) {
+            return true;
+          }
+
+          const z = t ? valueGetter(t) : undefined;
+
+          const shouldHandleAsArray = isArray(z) && arrayLogic.length > 0;
+
+          let result;
+
+          if (shouldHandleAsArray) {
+            result = applyLogicToFlattenedGroups(
+              z as any,
+              [...arrayLogic],
+              resolver,
+            );
+          } else {
+            result = resolver(z as ZE);
+          }
+
+          return negated ? !result : result;
+        });
+
+        return new QueryArray(filteredElems, this._originalData);
+      };
+
+      const out = {
+        is: (y: ZE | null | undefined) => _resolve((z: ZE) => isEqual(z, y)),
+        eq: (y: ZE | null | undefined) => out.is(y as any),
+        equals: (y: ZE | null | undefined) => out.is(y as any),
+
+        isNull: () => _resolve((z: ZE) => isEqual(z, null)),
+        isUndefined: () => _resolve((z: ZE) => isEqual(z, undefined)),
+        isNullish: () => _resolve((z: ZE) => !isDefined(z)),
+
+        in: (ys: ZE[]) => _resolve((z: ZE) => !!ys.find((y) => isEqual(z, y))),
+
+        satisfies: (fn: (z: ZE) => boolean) => _resolve(fn),
+
+        greaterThan: (y: ZE) =>
+          _resolve((z: ZE) => {
+            if (!isNumber(z) && !isString(z)) {
+              throw new Error(
+                "cannot call 'greaterThan' on a non-comparable value",
+              );
+            } else {
+              return z > y;
+            }
+          }),
+        gt: (y: ZE) => (out as any).greaterThan(y),
+
+        greaterThanOrEqualTo: (y: Z) =>
+          _resolve((z: ZE) => {
+            if (!isNumber(z) && !isString(z)) {
+              throw new Error(
+                "cannot call 'greaterThanOrEqualTo' on a non-comparable value",
+              );
+            } else {
+              return z >= y;
+            }
+          }),
+        gte: (y: ZE) => (out as any).greaterThanOrEqualTo(y),
+
+        lessThan: (y: ZE) =>
+          _resolve((z: ZE) => {
+            if (!isNumber(z) && !isString(z)) {
+              throw new Error(
+                "cannot call 'lessThan' on a non-comparable value",
+              );
+            } else {
+              return z < y;
+            }
+          }),
+        lt: (y: ZE) => (out as any).lessThan(y),
+
+        lessThanOrEqualTo: (y: ZE) =>
+          _resolve((z: ZE) => {
+            if (!isNumber(z) && !isString(z)) {
+              throw new Error(
+                "cannot call 'lessThanOrEqualTo' on a non-comparable value",
+              );
+            } else {
+              return z <= y;
+            }
+          }),
+        lte: (y: ZE) => (out as any).lessThanOrEqualTo(y),
+
+        matches: (y: NestedPartial<ZE>) =>
+          _resolve((z: ZE) => {
+            if (!isObjectOrArray(z) || !isObjectOrArray(y)) {
+              throw new Error("cannot call 'matches' on a non-object");
+            } else {
+              return isMatch(z, y);
+            }
+          }),
+
+        includes: (y: ElemType<Z>) =>
+          _resolve((z: ZE) => {
+            if (!isArray(z)) {
+              throw new Error("cannot call 'includes' on a non-array");
+            } else {
+              return !!z.find((e) => isEqual(y, e));
+            }
+          }),
+      } as unknown as QueryClause<Z, QueryArray<T>>;
+
+      return out;
+    };
+
+    const createNestableResolver = <Z>(
+      valueGetter: (t: T) => Z,
+      arrayLogic: ("some" | "every")[] = [],
+      negated = false,
+    ) => {
+      const out = {
+        ...createResolutionFns(valueGetter, arrayLogic, negated),
+
+        get not() {
+          return createNestableResolver(valueGetter, arrayLogic, !negated);
+        },
+
+        its: <K extends Z extends Array<unknown> ? keyof ElemType<Z> : keyof Z>(
+          prop: K,
+        ) => {
+          return createNestableResolver(
+            (t: T) => {
+              const z = valueGetter(t);
+
+              return isArray(z) && arrayLogic
+                ? z.map((e) => (e as ElemType<Z>)?.[prop as keyof ElemType<Z>])
+                : z?.[prop as keyof Z];
+            },
+            arrayLogic,
+            negated,
+          );
+        },
+
+        some: () => {
+          return createNestableResolver(
+            (t) => flattenWithGroups(valueGetter(t) as Array<unknown>),
+            [...arrayLogic, "some"],
+            negated,
+          );
+        },
+
+        every: () => {
+          return createNestableResolver(
+            (t) => flattenWithGroups(valueGetter(t) as Array<unknown>),
+            [...arrayLogic, "every"],
+            negated,
+          );
+        },
+      } as unknown as QueryClause<Z, QueryArray<T>>;
+
+      return out;
+    };
+
+    return createNestableResolver((t) => (isFunction(key) ? key(t) : t[key]));
   }
 }

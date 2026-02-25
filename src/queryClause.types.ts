@@ -24,7 +24,7 @@ export interface BaseQueryClause<T, R = QueryClauseResult<T>> {
   value?: T;
 
   /** when resolved, treat a 'false' result as a match and a 'true' result as a non-match */
-  not: () => QueryClause<T, R>;
+  not: QueryClause<T, R>;
 
   /**
    * check for equality between the current value and the provided comparison

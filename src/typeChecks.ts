@@ -15,6 +15,13 @@ export function isNumber(test: unknown): test is number {
 }
 
 /**
+ * verify if the provided test value is a boolean
+ */
+export function isBoolean(test: unknown): test is boolean {
+  return typeof test === "boolean";
+}
+
+/**
  * verify if the provided test value is a symbol
  */
 export function isSymbol(test: unknown): test is symbol {
