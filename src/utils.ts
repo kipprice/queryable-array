@@ -4,8 +4,10 @@ import {
   isArray,
   isBoolean,
   isDefined,
+  isNumber,
   isObject,
   isObjectOrArray,
+  isString,
   isSymbol,
 } from "./typeChecks";
 
@@ -19,10 +21,7 @@ import {
  * @returns The typed set of keys associated with the object
  */
 export const getKeys = <T extends object>(object: T) => {
-  if (!isDefined(object) || (!isObject(object) && !isArray(object))) {
-    return [];
-  }
-  return Object.keys(object) as (keyof T)[];
+  return (isObjectOrArray(object) ? Object.keys(object) : []) as (keyof T)[];
 };
 
 /**
@@ -52,10 +51,9 @@ export const arrayToMap = <E extends unknown, V = E>(
     return null;
   }
 
-  return array.reduce(
-    (acc, cur) => ({ ...acc, [getKeyFn(cur)]: getValFn(cur) }),
-    {} as Record<string, V>,
-  );
+  const out: Record<Key, V> = {};
+  array.forEach((e) => (out[getKeyFn(e)] = getValFn(e)));
+  return out;
 };
 
 /**
@@ -131,6 +129,9 @@ export const bucketsToMap = <E extends unknown>(
  * @returns True if the value of each item is equivalent
  */
 export const isEqual = <T>(a: T, b: T) => {
+  if (a === b) {
+    return true;
+  }
   if (isSymbol(a) && isSymbol(b)) {
     return a.toString() === b.toString();
   }
@@ -155,7 +156,7 @@ export const isMatch = <T extends object, K extends keyof T = keyof T>(
 ): boolean => {
   const keysToMatch = getKeys(partial);
   return keysToMatch.every((k) => {
-    if (isObject(partial[k]) && isObject(base[k])) {
+    if (isObjectOrArray(partial[k]) && isObjectOrArray(base[k])) {
       return isMatch(base[k], partial[k]);
     } else {
       return isEqual(base[k], partial[k]);
@@ -178,12 +179,19 @@ export const isMatch = <T extends object, K extends keyof T = keyof T>(
  *
  * @returns True if the value of each item is equivalent
  */
-export const isDeepEqual = <T>(a: T, b: T) => {
+export const isDeepEqual = <T>(a: T, b: T): boolean => {
   if (!isObjectOrArray(a) || !isObjectOrArray(b)) {
     return isEqual(a, b);
   }
 
-  return isMatch(a, b) && isMatch(b, a);
+  const keysToMatch = [...getKeys(a), ...getKeys(b)];
+  return keysToMatch.every((k: keyof T) => {
+    if (isObjectOrArray(a[k]) && isObjectOrArray(b[k])) {
+      return isDeepEqual(a[k], b[k]);
+    } else {
+      return isEqual(a[k], b[k]);
+    }
+  });
 };
 
 export const START_GROUP_DIVIDER = Symbol("[");
@@ -211,11 +219,20 @@ export const flattenWithGroups = <
     return arr;
   }
 
-  return arr
-    .map((e) =>
-      isArray(e) ? [START_GROUP_DIVIDER, ...e, END_GROUP_DIVIDER] : [e],
-    )
-    .flat(1) as (
+  const out = [];
+
+  for (const e of arr) {
+    if (!isArray(e)) {
+      out.push(e);
+      continue;
+    }
+
+    out.push(START_GROUP_DIVIDER);
+    e.forEach((x) => out.push(x));
+    out.push(END_GROUP_DIVIDER);
+  }
+
+  return out as (
     | ElemType<E>
     | typeof START_GROUP_DIVIDER
     | typeof END_GROUP_DIVIDER
@@ -235,30 +252,25 @@ export const flattenWithGroups = <
 export const reLayerGroups = <E = any>(
   arr: (E | typeof START_GROUP_DIVIDER | typeof END_GROUP_DIVIDER)[],
 ) => {
-  let layers: Record<number, any[]> = {
-    0: [],
-  };
-  let expectedLayer = 0;
+  let layers: any[][] = [[]];
+  let currentLayer = 0;
 
   for (let idx = 0; idx < arr.length; idx += 1) {
     const e = arr[idx];
 
     // start a new group at the appropriate layer
     if (e === START_GROUP_DIVIDER) {
-      expectedLayer += 1;
-      if (!layers[expectedLayer]) {
-        layers[expectedLayer] = [];
+      currentLayer += 1;
+      if (!layers[currentLayer]) {
+        layers[currentLayer] = [];
       }
     } else if (e === END_GROUP_DIVIDER) {
-      layers[expectedLayer - 1] = [
-        ...layers[expectedLayer - 1]!,
-        [...layers[expectedLayer]!],
-      ];
+      layers[currentLayer - 1]!.push(layers[currentLayer]!);
 
-      layers[expectedLayer] = [];
-      expectedLayer -= 1;
+      layers[currentLayer] = [];
+      currentLayer -= 1;
     } else {
-      layers[expectedLayer]!.push(e as E);
+      layers[currentLayer]!.push(e as E);
     }
   }
 
@@ -287,48 +299,108 @@ export const applyLogicToFlattenedGroups = <E = any>(
   arrayLogic: ("some" | "every")[],
   resolver: (e: E) => boolean,
 ) => {
-  let lastStartIdx = -1;
-  let resolved: Array<
-    E | boolean | typeof START_GROUP_DIVIDER | typeof END_GROUP_DIVIDER
-  > = Array.from(arr);
+  const layers: any[][] = [[]];
+  let currentLayer = 0;
+  let skipNextXEndGroups = -1;
 
-  // loop through all but the first logic layer to start combining values in the
-  // array
-  for (let layer = arrayLogic.length - 1; layer > 0; layer -= 1) {
-    for (let idx = 0; idx < resolved.length; idx += 1) {
-      const e = resolved[idx];
-
-      // keep track of the start of the group we will end up evaluating
-      if (e === START_GROUP_DIVIDER) {
-        lastStartIdx = idx;
-
-        // once we hit the end of the current group, replace the original
-        // values with the resolved values, based on the current logic layer
-      } else if (e === END_GROUP_DIVIDER) {
-        // only close out a group if we know where the start of the group was
-        if (lastStartIdx === -1) {
-          continue;
+  // if this array isn't flattened, just evaluate it as normal
+  if (arr[0] !== START_GROUP_DIVIDER) {
+    return (
+      arr.length > 0 &&
+      arr[arrayLogic[0]!]((e) => {
+        if (e === START_GROUP_DIVIDER || e === END_GROUP_DIVIDER) {
+          throw new Error("too few array logics passed");
         }
+        return isBoolean(e) ? e : resolver(e as E);
+      })
+    );
+  }
 
-        const group = resolved.slice(lastStartIdx + 1, idx) as E[];
-        const groupResolution =
-          group.length > 0 &&
-          group[arrayLogic[layer]!]((e) => (isBoolean(e) ? e : resolver(e)));
-        resolved.splice(lastStartIdx, idx - lastStartIdx + 1, groupResolution);
-        idx = lastStartIdx;
-        lastStartIdx = -1;
+  // loop through each item in order to be able to sequentially create and
+  // squash groups
+  for (let idx = 0; idx < arr.length; idx += 1) {
+    const e = arr[idx];
+
+    // keep track of the start of the group we will end up evaluating
+    if (e === START_GROUP_DIVIDER) {
+      if (skipNextXEndGroups >= 0) {
+        skipNextXEndGroups += 1;
+        continue;
       }
+      currentLayer += 1;
+      if (!layers[currentLayer]) {
+        layers[currentLayer] = [];
+      }
+
+      // once we hit the end of the current group, replace the original
+      // values with the resolved values, based on the current logic layer
+    } else if (e === END_GROUP_DIVIDER) {
+      if (skipNextXEndGroups > 0) {
+        skipNextXEndGroups -= 1;
+        continue;
+      }
+      skipNextXEndGroups = -1;
+
+      const logic = arrayLogic[currentLayer];
+      if (!logic) {
+        throw new Error("too few array logics passed");
+      }
+      const group = layers.pop()!;
+      const groupResolution =
+        group.length > 0 &&
+        (logic === "some"
+          ? group.some((e) => (isBoolean(e) ? e : resolver(e)))
+          : group.every((e) => (isBoolean(e) ? e : resolver(e))));
+
+      currentLayer -= 1;
+      layers[currentLayer]!.push(groupResolution);
+
+      // if we know the remaining checks at this layer are superfluous given the
+      // current logic, exit early
+      for (let lIdx = currentLayer; lIdx >= 0; lIdx -= 1) {
+        const nextLogic = arrayLogic[lIdx];
+        const canFailFast =
+          // any true value will succeed in a 'some' evaluation
+          (nextLogic === "some" && groupResolution) ||
+          // any false value will fail in an 'every' evaluation
+          (nextLogic === "every" && !groupResolution);
+
+        if (canFailFast) {
+          if (lIdx === 0) {
+            return groupResolution;
+          } else {
+            skipNextXEndGroups += 1;
+          }
+        } else {
+          break;
+        }
+      }
+    } else {
+      if (skipNextXEndGroups >= 0) {
+        continue;
+      }
+      layers[currentLayer]!.push(e);
     }
   }
 
+  // if we have not popped off all of our layers, something has gone wrong
+  if (layers.length !== 1) {
+    throw new Error("too few array logics passed");
+  }
+
   // the final resolution happens at the top level of the resolved array and returns just a single boolean
+  const finalLogic = arrayLogic[0];
+  const finalGroup = layers[0];
+
   return (
-    resolved.length > 0 &&
-    resolved[arrayLogic[0]!]((e) => {
-      if (e === START_GROUP_DIVIDER || e === END_GROUP_DIVIDER) {
-        throw new Error("too few array logics passed");
-      }
-      return isBoolean(e) ? e : resolver(e as E);
-    })
+    finalGroup &&
+    finalGroup.length > 0 &&
+    (finalLogic === "some"
+      ? finalGroup.some((e) => {
+          return isBoolean(e) ? e : resolver(e as E);
+        })
+      : finalGroup.every((e) => {
+          return isBoolean(e) ? e : resolver(e as E);
+        }))
   );
 };

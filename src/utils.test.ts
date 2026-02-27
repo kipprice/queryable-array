@@ -184,6 +184,9 @@ describe("utils", () => {
         { a: 1, b: { c: 2 } }, // order does matter in most browsers
         { a: 1, d: { c: 2 } },
       ],
+      ["null", null, null, undefined],
+      ["undefined", undefined, undefined, null],
+      ["NaN", NaN, NaN, 0],
       ["array", ["a", "b", "c"], ["a", "b", "c"], ["a", "d", "c"]],
       [
         "array of objects",
@@ -240,6 +243,14 @@ describe("utils", () => {
     it("can detect that one object is not a match for another when comparing deeply", () => {
       expect(isMatch({ a: 1, b: { c: 1, d: 2 } }, { b: { c: 2 } })).to.be.false;
     });
+
+    it("returns true when the partial is an empty object", () => {
+      expect(isMatch({ a: 1, b: 2 }, {})).to.be.true;
+    });
+
+    it("returns false when arrays have the same elements in different positions", () => {
+      expect(isMatch(["a", "b"], ["b", "a"])).to.be.false;
+    });
   });
 
   describe("isDeepEqual", () => {
@@ -286,6 +297,14 @@ describe("utils", () => {
     it("can detect that one object is not a match for another when comparing deeply", () => {
       expect(isDeepEqual({ a: 1, b: { c: 1, d: 2 } }, { b: { c: 2 } })).to.be
         .false;
+    });
+
+    it("returns true for objects with the same keys and values in different insertion order", () => {
+      expect(isDeepEqual({ a: 1, b: 2 }, { b: 2, a: 1 })).to.be.true;
+    });
+
+    it("returns false for arrays with the same elements in different positions", () => {
+      expect(isDeepEqual(["a", "b"], ["b", "a"])).to.be.false;
     });
   });
 
@@ -434,6 +453,10 @@ describe("utils", () => {
   });
 
   describe("reLayerGroups", () => {
+    it("returns an empty array when given an empty array", () => {
+      expect(reLayerGroups([])).to.eql([]);
+    });
+
     it("does not affect an un-layered array", () => {
       const arr = ["a", "b", "c"];
 
@@ -507,13 +530,13 @@ describe("utils", () => {
   });
 
   describe("applyLogicToFlattenedGroups", () => {
-    it("can apply a single layer of array logic to a singly-layered array", () => {
+    it("can apply a single layer of array logic to a singly-layered (unflattened) array", () => {
       const arr = [{ id: "1" }, { id: "2" }, { id: "3" }];
       expect(applyLogicToFlattenedGroups(arr, ["some"], (x) => x.id == "2")).to
         .be.true;
     });
 
-    it("can apply a single layer of array logic to a doubly-layered array", () => {
+    it("can apply a single layer of array logic to a doubly-layered (flattened) array", () => {
       const arr = [[{ id: "1" }, { id: "2" }], [{ id: "3" }]];
       const flatArr = flattenWithGroups(arr);
       expect(
@@ -525,7 +548,7 @@ describe("utils", () => {
       ).to.be.true;
     });
 
-    it("can apply a single layer of array logic to a triply-layered array", () => {
+    it("can apply a single layer of array logic to a triply-layered (twice-flattened) array", () => {
       const arr = [[[{ id: "1" }], [{ id: "2" }]], [[{ id: "3" }]]];
       const flatArr = flattenWithGroups(arr);
       const doublyFlatArr = flattenWithGroups(flatArr);
@@ -614,6 +637,10 @@ describe("utils", () => {
           (x) => ["lion", "bear"].includes(x),
         ),
       ).to.be.true;
+    });
+
+    it("returns false when given an empty array", () => {
+      expect(applyLogicToFlattenedGroups([], ["some"], () => true)).to.be.false;
     });
 
     it("requires that any given group have at least one value to return true", () => {

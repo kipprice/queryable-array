@@ -55,7 +55,7 @@ export function isFunction(test: unknown): test is Function {
 export function isObjectOrArray<T = unknown>(
   test: unknown,
 ): test is object | Array<T> {
-  return isArray(test) || isObject(test);
+  return typeof test === "object" && test !== null;
 }
 
 /**

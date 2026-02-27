@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "vitest"
+    "test": "vitest",
+    "test:benchmark": "vitest bench",
+    "test:benchmark:report": "vitest bench --outputJson benchmark.json --watch false && cat benchmark.json | node scripts/benchmarkFormatter.js && rm benchmark.json"
   },
   "keywords": [],
   "author": "",
