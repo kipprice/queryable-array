@@ -4,6 +4,7 @@ import {
   isDefined,
   isFunction,
   isNumber,
+  isObject,
   isObjectOrArray,
   isString,
 } from "./typeChecks";
@@ -54,6 +55,10 @@ export class QueryArray<T> extends Array<T> {
     this._populateInnerStore();
   }
 
+  public get data() {
+    return this.__currentData;
+  }
+
   public constructor(
     elements: T[],
     originalData?: T[],
@@ -83,26 +88,6 @@ export class QueryArray<T> extends Array<T> {
     });
 
     this.length = this.__currentData.length;
-  }
-
-  /**
-   * even though we're inheriting from an array, to actually keep things
-   * performant, we pass all direct Array method calls onto the _currentData
-   * array via augmenting our object directly.
-   */
-  protected _cloneArrayMethods() {
-    var keys = [];
-    var obj = [];
-    do {
-      keys.push(...Object.getOwnPropertyNames(obj));
-    } while ((obj = Object.getPrototypeOf(obj)));
-
-    for (const k of keys) {
-      if (isFunction((this.__currentData as any)[k])) {
-        (this as any)[k] = (...args: any[]) =>
-          (this.__currentData as any)[k](...args);
-      }
-    }
   }
 
   /**
@@ -489,15 +474,21 @@ export class QueryArray<T> extends Array<T> {
       };
 
       const out = {
-        is: (y: ZE | null | undefined) => _resolve((z: ZE) => isEqual(z, y)),
+        is: (y: ZE | null | undefined) =>
+          isObjectOrArray(y)
+            ? _resolve((z: ZE) => isEqual(z, y))
+            : _resolve((z: ZE) => y === z),
         eq: (y: ZE | null | undefined) => out.is(y as any),
         equals: (y: ZE | null | undefined) => out.is(y as any),
 
-        isNull: () => _resolve((z: ZE) => isEqual(z, null)),
-        isUndefined: () => _resolve((z: ZE) => isEqual(z, undefined)),
-        isNullish: () => _resolve((z: ZE) => !isDefined(z)),
+        isNull: () => _resolve((z: ZE) => z === null),
+        isUndefined: () => _resolve((z: ZE) => z === undefined),
+        isNullish: () => _resolve((z: ZE) => z === undefined || z === null),
 
-        in: (ys: ZE[]) => _resolve((z: ZE) => !!ys.find((y) => isEqual(z, y))),
+        in: (ys: ZE[]) =>
+          _resolve(
+            (z: ZE) => !!ys.find((y) => (y === z ? true : isEqual(z, y))),
+          ),
 
         satisfies: (fn: (z: ZE) => boolean) => _resolve(fn),
 
