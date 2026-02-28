@@ -1,10 +1,3 @@
-import {
-  SortOrder,
-  type ElemType,
-  type Key,
-  type NestedPartial,
-  type UnionToIntersection,
-} from "./_types";
 import type { QueryClause } from "./queryClause.types";
 import {
   isArray,
@@ -21,6 +14,14 @@ import {
   isEqual,
   isMatch,
 } from "./utils";
+import {
+  SortOrder,
+  type ElemType,
+  type Key,
+  type NestedPartial,
+  type UnionToIntersection,
+} from "./_types";
+import { assert } from "./assertions";
 
 /**-------------------------------------------------------------------------
  * QueryArray
@@ -32,30 +33,75 @@ import {
  * -------------------------------------------------------------------------
  */
 export class QueryArray<T> extends Array<T> {
+  protected __currentData: T[];
   protected _originalData: T[];
+
+  [idx: number]: T;
+
+  /** ensure that we instantiate intermediate versions of query arrays (e.g.
+   * through .filter or .map) as a straight array instance -- we will always
+   * explicitly wrap the result in a QueryArray when appropriate */
+  static get [Symbol.species]() {
+    return Array;
+  }
+
+  protected get _currentData() {
+    return this.__currentData;
+  }
+
+  protected set _currentData(d: T[]) {
+    this.__currentData = d;
+    this._populateInnerStore();
+  }
 
   public constructor(
     elements: T[],
     originalData?: T[],
     protected _currentLogic: "and" | "or" = "and",
+
+    /** the set of currently included elems, if relevant -- used to improve performance of OR queries */
+    protected _currentSet: Set<T> = new Set(),
   ) {
-    if (isArray(elements)) {
-      super(elements.length);
-      this._originalData = originalData ?? new Array(elements.length);
+    assert(isArray(elements));
+    super(elements.length);
+    this.__currentData = elements;
+    this._originalData = originalData ?? elements.slice(0, elements.length);
 
-      let idx = elements.length;
-      while (idx--) {
-        this[idx] = elements[idx] as T;
-        if (!originalData) {
-          this._originalData[idx] = elements[idx] as T;
-        }
+    // ensure that the QueryArray behaves like a regular array, but largely
+    // through passing through to the current value of _currentData
+    this._populateInnerStore();
+  }
+
+  /**
+   * ensure that we have the elements from _currentData also populated into our
+   * numeric indices, so that you can extract data as you would from a regular
+   * array
+   **/
+  protected _populateInnerStore() {
+    this.__currentData.forEach((e, idx) => {
+      this[idx] = e;
+    });
+
+    this.length = this.__currentData.length;
+  }
+
+  /**
+   * even though we're inheriting from an array, to actually keep things
+   * performant, we pass all direct Array method calls onto the _currentData
+   * array via augmenting our object directly.
+   */
+  protected _cloneArrayMethods() {
+    var keys = [];
+    var obj = [];
+    do {
+      keys.push(...Object.getOwnPropertyNames(obj));
+    } while ((obj = Object.getPrototypeOf(obj)));
+
+    for (const k of keys) {
+      if (isFunction((this.__currentData as any)[k])) {
+        (this as any)[k] = (...args: any[]) =>
+          (this.__currentData as any)[k](...args);
       }
-
-      // native array methods will call with arguments other than an array; in
-      // this case, just pass the data along to the regular constructor
-    } else {
-      super(elements);
-      this._originalData = [];
     }
   }
 
@@ -63,14 +109,14 @@ export class QueryArray<T> extends Array<T> {
    * get the first element in the query array, based on the current query
    */
   public get first() {
-    return this[0];
+    return this._currentData[0];
   }
 
   /**
    * get the last element in the query array, based on the current query
    */
   public get last() {
-    return this[this.length - 1];
+    return this._currentData[this._currentData.length - 1];
   }
 
   /**
@@ -78,7 +124,9 @@ export class QueryArray<T> extends Array<T> {
    * both the current query and the new query are included
    */
   public get and() {
-    return new QueryArray(this, this._originalData, "and");
+    this._currentLogic = "and";
+    this._currentSet = new Set();
+    return this;
   }
 
   /**
@@ -86,13 +134,14 @@ export class QueryArray<T> extends Array<T> {
    * the current query or the new query are included (without duplicates)
    */
   public get or() {
-    return new QueryArray(this, this._originalData, "or");
+    this._currentLogic = "or";
+    return this;
   }
 
   /**
    * Remove any duplicate members of the array, via deep-equality comparison
    *
-   * @returns A new QueryArray sans duplicate members
+   * @returns This QueryArray sans duplicate members
    */
   public unique() {
     return this.uniqueBy((t) => t);
@@ -106,27 +155,27 @@ export class QueryArray<T> extends Array<T> {
    *          Either a property name or a function that can be used to get the
    *          value that should be compared for uniqueness
    *
-   * @returns A new QueryArray sans duplicate members
+   * @returns This QueryArray sans duplicate members
    */
   public uniqueBy<X>(keyGetter: keyof T | ((t: T) => X)) {
     const filterByUniqueness = (arr: T[]) => {
-      const seenValues: (X | T[keyof T])[] = [];
+      const seenValues: Record<string, true> = {};
       const out: T[] = [];
       arr.forEach((t) => {
         const x = isFunction(keyGetter) ? keyGetter(t) : t[keyGetter];
-        if (seenValues.find((v) => isDeepEqual(x, v))) {
+        const stringified = JSON.stringify(x);
+        if (seenValues[stringified]) {
           return;
         }
-        seenValues.push(x);
+        seenValues[stringified] = true;
         out.push(t);
       });
       return out;
     };
 
-    return new QueryArray(
-      filterByUniqueness(this),
-      filterByUniqueness(this._originalData),
-    );
+    this._currentData = filterByUniqueness(this._currentData);
+    this._originalData = filterByUniqueness(this._originalData);
+    return this;
   }
 
   /**
@@ -146,13 +195,12 @@ export class QueryArray<T> extends Array<T> {
     sortKeyGetter: keyof T | ((t: T) => string | number),
     direction: "asc" | "desc" = "asc",
   ) {
+    const valueGetter = (t: T) =>
+      isFunction(sortKeyGetter) ? sortKeyGetter(t) : t[sortKeyGetter];
+
     const sortFn = (a: T, b: T) => {
-      const compA = isFunction(sortKeyGetter)
-        ? sortKeyGetter(a)
-        : a[sortKeyGetter];
-      const compB = isFunction(sortKeyGetter)
-        ? sortKeyGetter(b)
-        : b[sortKeyGetter];
+      const compA = valueGetter(a);
+      const compB = valueGetter(b);
 
       if (compA < compB) {
         return direction === "asc"
@@ -169,10 +217,22 @@ export class QueryArray<T> extends Array<T> {
 
     // apply the sort both to our current value and our original values,
     // so we can preserve sort order when the sort occurs before an 'or'
-    // if (this instanceof QueryArray) {
-    return new QueryArray(this.sort(sortFn), this._originalData.sort(sortFn));
+    this._currentData = [...this._currentData].sort(sortFn);
+    this._originalData = [...this._originalData].sort(sortFn);
+
+    return this;
   }
 
+  /**
+   * combine two arrays via a shared key and return a new QueryArray of the
+   * joined version of the model
+   *
+   * @param   them
+   *          Elements to join with the current
+   *
+   * @returns A chainable joiner that can be used to set a new key to the
+   *          result of the join
+   */
   public joinWith<U>(them: U[]) {
     return {
       /** a key on the current array that references a value in the provided array */
@@ -223,8 +283,10 @@ export class QueryArray<T> extends Array<T> {
                   });
                 };
 
+                // we return a true new query array here because the types have
+                // now changed
                 return new QueryArray<TU>(
-                  joinFn(this),
+                  joinFn(this._currentData),
                   joinFn(this._originalData),
                 );
               },
@@ -250,13 +312,16 @@ export class QueryArray<T> extends Array<T> {
    * @returns A map of the query array, keyed by the results of the keyGetter
    */
   public indexBy(keyGetter: keyof T | ((t: T) => Key)) {
-    return this.reduce(
-      (acc, cur) => ({
-        ...acc,
-        [isFunction(keyGetter) ? keyGetter(cur) : (cur[keyGetter] as Key)]: cur,
-      }),
-      {} as Record<Key, T>,
-    );
+    const out: Record<Key, T> = {};
+
+    const valueGetter = (t: T) =>
+      isFunction(keyGetter) ? keyGetter(t) : (t?.[keyGetter] as Key);
+
+    this._currentData.forEach((t) => {
+      out[valueGetter(t)] = t;
+    });
+
+    return out;
   }
 
   /**
@@ -269,23 +334,24 @@ export class QueryArray<T> extends Array<T> {
    *          of values that returned that key
    */
   public groupBy(keyGetter: keyof T | ((t: T) => Key | Key[])) {
-    return this.reduce(
-      (acc, cur) => {
-        const keyOrArr = isFunction(keyGetter)
-          ? keyGetter(cur)
-          : (cur[keyGetter] as Key);
-        const keyArr = isArray(keyOrArr) ? keyOrArr : [keyOrArr];
+    const out: Record<Key, T[]> = {};
 
-        const out = {
-          ...acc,
-        };
-        for (const key of keyArr) {
-          out[key] = [...(out[key] ?? []), cur];
+    const valueGetter = (t: T) =>
+      isFunction(keyGetter) ? keyGetter(t) : (t?.[keyGetter] as Key);
+
+    this._currentData.forEach((t) => {
+      const x = valueGetter(t);
+      const keys = isArray(x) ? x : [x];
+
+      for (const k of keys) {
+        if (!out[k]) {
+          out[k] = [];
         }
-        return out;
-      },
-      {} as Record<Key, T[]>,
-    );
+        out[k].push(t);
+      }
+    });
+
+    return out;
   }
 
   /**
@@ -319,9 +385,11 @@ export class QueryArray<T> extends Array<T> {
    */
   public extract<X>(keyGetter: keyof T | ((t: T) => X)) {
     return new QueryArray<X>(
-      this.flatMap((t) =>
-        isFunction(keyGetter) ? keyGetter(t) : (t[keyGetter] as X),
-      ).filter((x) => !!x),
+      this._currentData
+        .flatMap((t) =>
+          isFunction(keyGetter) ? keyGetter(t) : (t[keyGetter] as X),
+        )
+        .filter((x) => !!x),
       this._originalData
         .flatMap((t) =>
           isFunction(keyGetter) ? keyGetter(t) : (t[keyGetter] as X),
@@ -359,14 +427,6 @@ export class QueryArray<T> extends Array<T> {
   ): UnionToIntersection<QueryClause<X, QueryArray<T>>>;
 
   /**
-   * start filtering the array to elements that have a particualr value when
-   * passed through the specified extract function.
-   */
-  public where<X>(keyOrFn: keyof T | ((t: T) => X)) {
-    return this._innerWhere(keyOrFn);
-  }
-
-  /**
    * perform a where query either on a caller-specified getter or via a set of
    * query clauses that have already been queued up for our use by a previous
    * iteration of the query array
@@ -385,7 +445,7 @@ export class QueryArray<T> extends Array<T> {
    * @returns A new QueryClause that can be resolved to filter the query array
    *          down based on further chained function calls.
    */
-  protected _innerWhere<X>(key: keyof T | ((t: T) => X)) {
+  public where<X>(key: keyof T | ((t: T) => X)) {
     const createResolutionFns = <Z>(
       valueGetter: (t: T) => Z,
       arrayLogic: ("some" | "every")[] = [],
@@ -395,13 +455,10 @@ export class QueryArray<T> extends Array<T> {
 
       const _resolve = <Z>(resolver: (z: ZE) => boolean) => {
         const elems =
-          this._currentLogic === "and"
-            ? this
-            : this._originalData.slice(0, this._originalData.length);
+          this._currentLogic === "and" ? this._currentData : this._originalData;
 
         const filteredElems = elems.filter((t) => {
-          // automatically include anything that has already been filtered in when using an or operator
-          if (this._currentLogic === "or" && this.includes(t)) {
+          if (this._currentSet.has(t)) {
             return true;
           }
 
@@ -410,7 +467,6 @@ export class QueryArray<T> extends Array<T> {
           const shouldHandleAsArray = isArray(z) && arrayLogic.length > 0;
 
           let result;
-
           if (shouldHandleAsArray) {
             result = applyLogicToFlattenedGroups(
               z as any,
@@ -421,10 +477,15 @@ export class QueryArray<T> extends Array<T> {
             result = resolver(z as ZE);
           }
 
-          return negated ? !result : result;
+          const resultWithNegation = negated ? !result : result;
+          if (resultWithNegation) {
+            this._currentSet.add(t);
+          }
+          return resultWithNegation;
         });
 
-        return new QueryArray(filteredElems, this._originalData);
+        this._currentData = filteredElems;
+        return this;
       };
 
       const out = {
@@ -562,5 +623,274 @@ export class QueryArray<T> extends Array<T> {
     return createNestableResolver(
       isFunction(key) ? (t) => key(t) as X : (t) => t?.[key] as X,
     );
+  }
+
+  // =========================================
+  // OVERRIDDEN ARRAY METHODS RETURNING ARRAYS
+  // =========================================
+  // These are methods that in a native array, will return another array.
+  // These will be wrapped in a QueryArray instead, after being performed on
+  // the native _currentData array
+
+  public map<U>(fn: (t: T, idx: number, arr: T[]) => U) {
+    const mappedData = this._currentData.map<U>(fn);
+    return new QueryArray(mappedData);
+  }
+
+  public filter(...args: Parameters<Array<T>["filter"]>) {
+    return new QueryArray(
+      this._currentData.filter(...args),
+      this._originalData,
+      this._currentLogic,
+      this._currentSet,
+    );
+  }
+
+  public concat(...args: Parameters<Array<T>["concat"]>) {
+    return new QueryArray(this._currentData.concat(...args));
+  }
+
+  public slice(...args: Parameters<Array<T>["slice"]>) {
+    return new QueryArray(this._currentData.slice(...args));
+  }
+
+  public flat<A, D extends number = 1>(
+    this: A,
+    depth?: D | undefined,
+  ): FlatArray<A, D>[] {
+    return new QueryArray(
+      (this as QueryArray<T>)._currentData.flat<T[], D>(depth),
+    ) as FlatArray<A, D>[];
+  }
+
+  public flatMap<U>(
+    callback: (value: T, index: number, array: T[]) => U | readonly U[],
+  ): U[] {
+    return new QueryArray(this._currentData.flatMap<U>(callback));
+  }
+
+  public with(...args: Parameters<Array<T>["with"]>) {
+    return new QueryArray(this._currentData.with(...args));
+  }
+
+  public toSorted(...args: Parameters<Array<T>["toSorted"]>) {
+    return new QueryArray(
+      this._currentData.toSorted(...args),
+      this._originalData.toSorted(...args),
+      this._currentLogic,
+      this._currentSet,
+    );
+  }
+
+  public toReversed() {
+    return new QueryArray(
+      this._currentData.toReversed(),
+      this._originalData.toReversed(),
+      this._currentLogic,
+      this._currentSet,
+    );
+  }
+
+  public toSpliced(...args: Parameters<Array<T>["toSpliced"]>) {
+    return new QueryArray(
+      this._currentData.toSpliced(...args),
+      this._originalData,
+      this._currentLogic,
+      this._currentSet,
+    );
+  }
+
+  // ===========================================
+  // OVERRIDDEN IN-PLACE MODIFYING ARRAY METHODS
+  // ===========================================
+  // These are methods that operate directly on the current array reference
+  // rather than returning a new copy of the array with the operation performed.
+  // We perform these methods on the native _currentData array, then update
+  // our inner store to reflect the updates to the _currentData array before
+  // returning an appropriate result for the method.
+  public fill(...args: Parameters<Array<T>["fill"]>) {
+    this._currentData.fill(...args);
+    this._populateInnerStore();
+    return this;
+  }
+
+  public sort(...args: Parameters<Array<T>["sort"]>) {
+    this._currentData.sort(...args);
+    this._populateInnerStore();
+    this._originalData.sort(...args);
+    return this;
+  }
+
+  public reverse() {
+    this._currentData.reverse();
+    this._populateInnerStore();
+    this._originalData.reverse();
+    return this;
+  }
+
+  public splice(...args: Parameters<Array<T>["splice"]>) {
+    const out = this._currentData.splice(...args);
+    this._populateInnerStore();
+    return out;
+  }
+
+  public copyWithin(target: number, start: number, end?: number) {
+    this._currentData.copyWithin(target, start, end);
+    this._populateInnerStore();
+    return this;
+  }
+
+  // =========================================
+  // OVERRIDDEN ARRAY METHODS FOR OPTIMIZATION
+  // =========================================
+  // These are methods that we anticipate being slower when run directly on a
+  // QueryArray, as a result of the optimization that our semi-custom
+  // implementation requires. These pass through the function call to our
+  // _currentData array to take advantage of the optimized versions
+  public includes(...args: Parameters<Array<T>["includes"]>) {
+    return this._currentData.includes(...args);
+  }
+
+  public find<U>(predicate: (value: T, index: number, obj: T[]) => U) {
+    return this._currentData.find(predicate);
+  }
+
+  public findIndex<U>(
+    predicate: (value: T, index: number, obj: T[]) => U,
+  ): number {
+    return this._currentData.findIndex(predicate);
+  }
+
+  public findLast<U>(predicate: (value: T, index: number, obj: T[]) => U) {
+    return this._currentData.findLast(predicate);
+  }
+
+  public findLastIndex<U>(
+    predicate: (value: T, index: number, obj: T[]) => U,
+  ): number {
+    return this._currentData.findLastIndex(predicate);
+  }
+
+  public indexOf(...args: Parameters<Array<T>["indexOf"]>) {
+    return this._currentData.indexOf(...args);
+  }
+
+  public lastIndexOf(...args: Parameters<Array<T>["lastIndexOf"]>) {
+    return this._currentData.lastIndexOf(...args);
+  }
+
+  public forEach(...args: Parameters<Array<T>["forEach"]>) {
+    return this._currentData.forEach(...args);
+  }
+
+  public every<S extends T>(predicate: (t: T) => t is S): this is S[] {
+    return this._currentData.every(predicate);
+  }
+
+  public some(...args: Parameters<Array<T>["some"]>) {
+    return this._currentData.some(...args);
+  }
+
+  public reduce(callbackFn: (acc: T, cur: T, idx: number, arr: T[]) => T): T;
+  public reduce(
+    callbackFn: (acc: T, cur: T, idx: number, arr: T[]) => T,
+    initialValue: T,
+  ): T;
+  public reduce<U>(
+    callbackFn: (acc: U, cur: T, idx: number, arr: T[]) => U,
+    initialValue: U,
+  ): U;
+  public reduce<U>(
+    callbackfn: (acc: T | U, cur: T, idx: number, arr: T[]) => T | U,
+    initialValue?: T | U,
+  ): T | U {
+    return this._currentData.reduce(callbackfn as any, initialValue) as T | U;
+  }
+
+  public reduceRight(
+    callbackFn: (acc: T, cur: T, idx: number, arr: T[]) => T,
+  ): T;
+  public reduceRight(
+    callbackFn: (acc: T, cur: T, idx: number, arr: T[]) => T,
+    initialValue: T,
+  ): T;
+  public reduceRight<U>(
+    callbackFn: (acc: U, cur: T, idx: number, arr: T[]) => U,
+    initialValue: U,
+  ): U;
+  public reduceRight<U>(
+    callbackfn: (acc: T | U, cur: T, idx: number, arr: T[]) => T | U,
+    initialValue?: T | U,
+  ): T | U {
+    return this._currentData.reduceRight(callbackfn as any, initialValue) as
+      | T
+      | U;
+  }
+
+  // ==========================================
+  // OVERRIDDEN ARRAY METHODS FOR FUNCTIONALITY
+  // ==========================================
+  // These are methods that, if we didn't override them within our instance, we
+  // would end up with odd behavior as the interior array and the external
+  // representation of it would no longer match.
+  public pop() {
+    const out = this._currentData.pop();
+    this._populateInnerStore();
+    return out;
+  }
+  public shift() {
+    const out = this._currentData.shift();
+    this._populateInnerStore();
+    return out;
+  }
+  public push(...args: Parameters<Array<T>["push"]>) {
+    const out = this._currentData.push(...args);
+    this._populateInnerStore();
+    return out;
+  }
+  public unshift(...args: Parameters<Array<T>["unshift"]>) {
+    const out = this._currentData.unshift(...args);
+    this._populateInnerStore();
+    return out;
+  }
+
+  public at(index: number): T | undefined {
+    return this._currentData.at(index);
+  }
+
+  public entries() {
+    return this._currentData.entries();
+  }
+
+  public values() {
+    return this._currentData.values();
+  }
+
+  public keys() {
+    return this._currentData.keys();
+  }
+
+  public join(separator?: string): string {
+    return this._currentData.join(separator);
+  }
+
+  public toString(): string {
+    return this._currentData.toString();
+  }
+
+  public toLocaleString(): string;
+  public toLocaleString(
+    locales: string | string[],
+    options?: Intl.NumberFormatOptions & Intl.DateTimeFormatOptions,
+  ): string;
+  public toLocaleString(
+    locales?: string | string[],
+    options?: Intl.NumberFormatOptions & Intl.DateTimeFormatOptions,
+  ): string {
+    if (locales) {
+      return this._currentData.toLocaleString(locales, options);
+    } else {
+      return this._currentData.toLocaleString();
+    }
   }
 }
