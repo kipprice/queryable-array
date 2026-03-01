@@ -17,6 +17,7 @@ const hasFullCoverage = (coverageReport) => {
       throw new Error("not 100% covered");
     }
   }
+  console.log("100% coverage!");
 };
 
 main();
