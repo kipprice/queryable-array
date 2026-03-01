@@ -29,4 +29,4 @@ jobs:
       - name: "Test"
         run: pnpm test --coverage.enabled true --coverage.reporter=json-summary
       - name: "Evaluate coverage results"
-        run: node scripts/coverageSuccess.js
+        run: node scripts/coverageEvaluator.js
