@@ -1,16 +1,30 @@
 {
-  "name": "queryable",
+  "name": "queryable-array",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "type": "module",
+  "main": "./dist/queryable.cjs",
+  "module": "./dist/queryable.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/queryable.mjs",
+      "require": "./dist/queryable.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
+    "build": "vite build && tsc --emitDeclarationOnly --outDir dist",
     "test": "vitest",
     "test:benchmark": "vitest bench",
-    "test:benchmark:report": "vitest bench --outputJson benchmark.json --watch false && cat benchmark.json | node scripts/benchmarkFormatter.js && rm benchmark.json"
+    "test:benchmark:report": "vitest bench --outputJson benchmark.json --watch false && node scripts/benchmarkFormatter.js && rm benchmark.json"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "packageManager": "pnpm@10.17.1",
   "devDependencies": {
     "@types/node": "^25.2.0",

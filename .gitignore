@@ -1,2 +1,6 @@
 node_modules
 coverage
+dist
+
+vite.config.d.ts
+vite.config.d.ts.map
