@@ -49,6 +49,7 @@ export const createQueryableClause = <T, X, RT extends T[] = T[]>(
         let z: Z | undefined;
         try {
           z = valueGetter(t as unknown as T);
+          /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
         } catch (e) {
           z = undefined;
         }

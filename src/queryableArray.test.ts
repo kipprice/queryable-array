@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-expressions */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { describe, it, expect } from "vitest";
 import { QueryableArray } from "./queryableArray";

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { describe, expect, it } from "vitest";
 import { createQueryableClause } from "./queryableClause";
 import {
@@ -20,7 +22,6 @@ describe("queryable clause (via where)", () => {
           { str: "a", num: 1, bool: true },
           { str: "b", num: 2, bool: false },
         ];
-        const qc = createQueryableClause((t) => t.bool, data).is;
         expect(
           (
             createQueryableClause((t) => t.str, data)[alias] as CallableFunction
