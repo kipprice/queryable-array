@@ -3,7 +3,13 @@ import type {
   ComparableQueryClause,
   QueryClause,
 } from "./queryableClause.types";
-import { isArray, isNumber, isObjectOrArray, isString } from "./typeChecks";
+import {
+  isArray,
+  isNumber,
+  isObject,
+  isObjectOrArray,
+  isString,
+} from "./typeChecks";
 import {
   applyLogicToFlattenedGroups,
   flattenWithGroups,
@@ -75,6 +81,14 @@ export const createQueryableClause = <T, X, RT extends T[]>(
       isNull: () => _resolve((z: ZE) => z === null),
       isUndefined: () => _resolve((z: ZE) => z === undefined),
       isNullish: () => _resolve((z: ZE) => z === undefined || z === null),
+      isEmpty: () =>
+        _resolve((z: ZE) =>
+          z instanceof Array
+            ? z.length === 0
+            : isObject(z)
+              ? Object.keys(z).length === 0
+              : false,
+        ),
 
       in: (ys: ZE[]) =>
         _resolve((z: ZE) => !!ys.find((y) => (y === z ? true : isEqual(z, y)))),

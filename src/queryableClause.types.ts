@@ -112,6 +112,9 @@ export interface ObjectQueryClause<
    * also be full instance of the model
    */
   deepEquals: (t: T) => R;
+
+  /** determins if the object has no keys */
+  isEmpty: () => R;
 }
 
 export interface ArrayQueryClause<
@@ -153,6 +156,9 @@ export interface ArrayQueryClause<
    *          The element that should be contained within this array
    */
   includes: (t: E) => R;
+
+  /** determins if the array has no elements */
+  isEmpty: () => R;
 }
 
 export type QueryClause<T, R = QueryClauseResult<T>> =
