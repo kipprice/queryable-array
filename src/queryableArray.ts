@@ -10,7 +10,7 @@ import type { QueryClause } from "./queryableClause.types";
 import { isArray, isDefined, isFunction } from "./typeChecks";
 
 /**-------------------------------------------------------------------------
- * QueryArray
+ * QueryableArray
  * -------------------------------------------------------------------------
  * Helper to be able to take an array of data and turn it into a user-friendly
  * queryable object. This is an actual class as opposed to a wrapped object
@@ -18,7 +18,7 @@ import { isArray, isDefined, isFunction } from "./typeChecks";
  *
  * -------------------------------------------------------------------------
  */
-export class QueryArray<T> extends Array<T> {
+export class QueryableArray<T> extends Array<T> {
   protected _currentData: T[];
   protected _originalData: T[];
 
@@ -26,7 +26,7 @@ export class QueryArray<T> extends Array<T> {
 
   /** ensure that we instantiate intermediate versions of query arrays (e.g.
    * through .filter or .map) as a straight array instance -- we will always
-   * explicitly wrap the result in a QueryArray when appropriate */
+   * explicitly wrap the result in a QueryableArray when appropriate */
   static get [Symbol.species]() {
     return Array;
   }
@@ -48,7 +48,7 @@ export class QueryArray<T> extends Array<T> {
     this._currentData = elements;
     this._originalData = originalData ?? elements.slice(0, elements.length);
 
-    // ensure that the QueryArray behaves like a regular array, but largely
+    // ensure that the QueryableArray behaves like a regular array, but largely
     // through passing through to the current value of _currentData
     this._populateInnerStore();
   }
@@ -107,7 +107,7 @@ export class QueryArray<T> extends Array<T> {
   /**
    * Remove any duplicate members of the array, via deep-equality comparison
    *
-   * @returns This QueryArray sans duplicate members
+   * @returns This QueryableArray sans duplicate members
    */
   public unique() {
     return this.uniqueBy((t) => t);
@@ -121,7 +121,7 @@ export class QueryArray<T> extends Array<T> {
    *          Either a property name or a function that can be used to get the
    *          value that should be compared for uniqueness
    *
-   * @returns This QueryArray sans duplicate members
+   * @returns This QueryableArray sans duplicate members
    */
   public uniqueBy<X>(keyGetter: keyof T | ((t: T) => X)) {
     const filterByUniqueness = (arr: T[]) => {
@@ -139,7 +139,7 @@ export class QueryArray<T> extends Array<T> {
       return out;
     };
 
-    return new QueryArray(
+    return new QueryableArray(
       filterByUniqueness(this._currentData),
       filterByUniqueness(this._originalData),
       this._currentLogic,
@@ -186,7 +186,7 @@ export class QueryArray<T> extends Array<T> {
 
     // apply the sort both to our current value and our original values,
     // so we can preserve sort order when the sort occurs before an 'or'
-    return new QueryArray(
+    return new QueryableArray(
       [...this._currentData].sort(sortFn),
       [...this._originalData].sort(sortFn),
       this._currentLogic,
@@ -252,7 +252,7 @@ export class QueryArray<T> extends Array<T> {
   }
 
   /**
-   * extract inner data from this query array and turn it into a QueryArray of
+   * extract inner data from this query array and turn it into a QueryableArray of
    * its own. Will automatically flatten data if the result of the key getter
    * is an array.
    *
@@ -261,10 +261,10 @@ export class QueryArray<T> extends Array<T> {
    */
   public extract<K extends keyof T, X extends T[K]>(
     keyGetter: K,
-  ): QueryArray<X extends Array<unknown> ? ElemType<X> : X>;
+  ): QueryableArray<X extends Array<unknown> ? ElemType<X> : X>;
 
   /**
-   * extract inner data from this query array and turn it into a QueryArray of
+   * extract inner data from this query array and turn it into a QueryableArray of
    * its own. Will automatically flatten data if the result of the key getter
    * is an array.
    *
@@ -273,15 +273,15 @@ export class QueryArray<T> extends Array<T> {
    */
   public extract<X>(
     keyGetter: (t: T) => X,
-  ): QueryArray<X extends Array<unknown> ? ElemType<X> : X>;
+  ): QueryableArray<X extends Array<unknown> ? ElemType<X> : X>;
 
   /**
-   * extract inner data from this query array and turn it into a QueryArray of
+   * extract inner data from this query array and turn it into a QueryableArray of
    * its own. Will automatically flatten data if the result of the key getter
    * is an array.
    */
   public extract<X>(keyGetter: keyof T | ((t: T) => X)) {
-    return new QueryArray<X>(
+    return new QueryableArray<X>(
       this._currentData
         .flatMap((t) =>
           isFunction(keyGetter) ? keyGetter(t) : (t[keyGetter] as X),
@@ -345,7 +345,7 @@ export class QueryArray<T> extends Array<T> {
                *          Any additional tweaks to how this join should be
                *          performed.
                *
-               * @returns A new QueryArray with objects that contain the joined
+               * @returns A new QueryableArray with objects that contain the joined
                *          data
                **/
               storedTo: <
@@ -364,7 +364,7 @@ export class QueryArray<T> extends Array<T> {
                    * element being referenced couldn't be found */
                   keepUndefinedReferences?: boolean;
                 } = {},
-              ): QueryArray<TU> => {
+              ): QueryableArray<TU> => {
                 const joinFn = (arr: T[]) => {
                   return arr.map((t) => {
                     const myData = myValueGetter(t);
@@ -393,7 +393,7 @@ export class QueryArray<T> extends Array<T> {
 
                 // we return a true new query array here because the types have
                 // now changed
-                return new QueryArray<TU>(
+                return new QueryableArray<TU>(
                   joinFn(this._currentData),
                   joinFn(this._originalData),
                 );
@@ -417,7 +417,7 @@ export class QueryArray<T> extends Array<T> {
    */
   public where<K extends keyof T, X extends T[K]>(
     propertyName: K,
-  ): UnionToIntersection<QueryClause<X, QueryArray<T>>>;
+  ): UnionToIntersection<QueryClause<X, QueryableArray<T>>>;
 
   /**
    * start filtering the array to elements that have a particualr value when
@@ -431,7 +431,7 @@ export class QueryArray<T> extends Array<T> {
    */
   public where<X>(
     extractFn: (t: T) => X,
-  ): UnionToIntersection<QueryClause<X, QueryArray<T>>>;
+  ): UnionToIntersection<QueryClause<X, QueryableArray<T>>>;
 
   /**
    * perform a where query either on a caller-specified getter or via a set of
@@ -453,14 +453,14 @@ export class QueryArray<T> extends Array<T> {
    *          down based on further chained function calls.
    */
   public where<X>(key: keyof T | ((t: T) => X)) {
-    return createQueryableClause<T, X, QueryArray<T>>(
+    return createQueryableClause<T, X, QueryableArray<T>>(
       isFunction(key) ? (t: T) => key(t) : (t: T) => t[key] as X,
       this._currentData,
       this._originalData,
       this._currentLogic,
       this._currentSet,
       (filteredElems) =>
-        new QueryArray(
+        new QueryableArray(
           filteredElems,
           this._originalData,
           this._currentLogic,
@@ -473,16 +473,16 @@ export class QueryArray<T> extends Array<T> {
   // OVERRIDDEN ARRAY METHODS RETURNING ARRAYS
   // =========================================
   // These are methods that in a native array, will return another array.
-  // These will be wrapped in a QueryArray instead, after being performed on
+  // These will be wrapped in a QueryableArray instead, after being performed on
   // the native _currentData array
 
   public map<U>(fn: (t: T, idx: number, arr: T[]) => U) {
     const mappedData = this._currentData.map<U>(fn);
-    return new QueryArray(mappedData);
+    return new QueryableArray(mappedData);
   }
 
   public filter(...args: Parameters<Array<T>["filter"]>) {
-    return new QueryArray(
+    return new QueryableArray(
       this._currentData.filter(...args),
       this._originalData,
       this._currentLogic,
@@ -491,34 +491,34 @@ export class QueryArray<T> extends Array<T> {
   }
 
   public concat(...args: Parameters<Array<T>["concat"]>) {
-    return new QueryArray(this._currentData.concat(...args));
+    return new QueryableArray(this._currentData.concat(...args));
   }
 
   public slice(...args: Parameters<Array<T>["slice"]>) {
-    return new QueryArray(this._currentData.slice(...args));
+    return new QueryableArray(this._currentData.slice(...args));
   }
 
   public flat<A, D extends number = 1>(
     this: A,
     depth?: D | undefined,
   ): FlatArray<A, D>[] {
-    return new QueryArray(
-      (this as QueryArray<T>)._currentData.flat<T[], D>(depth),
+    return new QueryableArray(
+      (this as QueryableArray<T>)._currentData.flat<T[], D>(depth),
     ) as FlatArray<A, D>[];
   }
 
   public flatMap<U>(
     callback: (value: T, index: number, array: T[]) => U | readonly U[],
   ): U[] {
-    return new QueryArray(this._currentData.flatMap<U>(callback));
+    return new QueryableArray(this._currentData.flatMap<U>(callback));
   }
 
   public with(...args: Parameters<Array<T>["with"]>) {
-    return new QueryArray(this._currentData.with(...args));
+    return new QueryableArray(this._currentData.with(...args));
   }
 
   public toSorted(...args: Parameters<Array<T>["toSorted"]>) {
-    return new QueryArray(
+    return new QueryableArray(
       this._currentData.toSorted(...args),
       this._originalData.toSorted(...args),
       this._currentLogic,
@@ -527,7 +527,7 @@ export class QueryArray<T> extends Array<T> {
   }
 
   public toReversed() {
-    return new QueryArray(
+    return new QueryableArray(
       this._currentData.toReversed(),
       this._originalData.toReversed(),
       this._currentLogic,
@@ -536,7 +536,7 @@ export class QueryArray<T> extends Array<T> {
   }
 
   public toSpliced(startIdx: number, deleteCount?: number, replaceItem?: T) {
-    return new QueryArray(
+    return new QueryableArray(
       isDefined(deleteCount) && isDefined(replaceItem)
         ? this._currentData.toSpliced(startIdx, deleteCount, replaceItem)
         : this._currentData.toSpliced(startIdx, deleteCount),
@@ -577,7 +577,7 @@ export class QueryArray<T> extends Array<T> {
   public splice(...args: Parameters<Array<T>["splice"]>) {
     const out = this._currentData.splice(...args);
     this._populateInnerStore();
-    return new QueryArray(out);
+    return new QueryableArray(out);
   }
 
   public copyWithin(target: number, start: number, end?: number) {
@@ -590,7 +590,7 @@ export class QueryArray<T> extends Array<T> {
   // OVERRIDDEN ARRAY METHODS FOR OPTIMIZATION
   // =========================================
   // These are methods that we anticipate being slower when run directly on a
-  // QueryArray, as a result of the optimization that our semi-custom
+  // QueryableArray, as a result of the optimization that our semi-custom
   // implementation requires. These pass through the function call to our
   // _currentData array to take advantage of the optimized versions
   public includes(...args: Parameters<Array<T>["includes"]>) {

@@ -1,4 +1,4 @@
-import { QueryArray } from "./queryArray";
+import { QueryableArray } from "./queryableArray";
 import { isArray } from "./typeChecks";
 
 /**----------------------------------------------------------------------------
@@ -32,14 +32,14 @@ export function queryable<T, E extends T extends Array<infer E> ? E : T>(
   // non arrays get wrapped in an array first; this can help exclude single
   // elements using the same syntax we would for full array filtering
   if (!isArray(toBeQueryable)) {
-    return new QueryArray<E>(
+    return new QueryableArray<E>(
       [toBeQueryable as unknown as E],
       [toBeQueryable as unknown as E],
     );
 
     // arrays are made queryable directly
   } else {
-    return new QueryArray<E>(toBeQueryable as E[]);
+    return new QueryableArray<E>(toBeQueryable as E[]);
   }
 }
 

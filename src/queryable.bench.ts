@@ -32,7 +32,7 @@ const ARRAY_WITH_NESTED = Array.from({ length: 9_999 }, (_, i) => ({
 describe("query array benchmarks", () => {
   describe("instantiation", () => {
     describe("small dataset", () => {
-      bench("new QueryArray", () => {
+      bench("new QueryableArray", () => {
         queryable(SMALL_ARRAY);
       });
 
@@ -49,7 +49,7 @@ describe("query array benchmarks", () => {
     });
 
     describe("medium dataset", () => {
-      bench("new QueryArray", () => {
+      bench("new QueryableArray", () => {
         queryable(MEDIUM_ARRAY);
       });
       // because there is so much variance in array creation for smaller arrays
@@ -65,7 +65,7 @@ describe("query array benchmarks", () => {
     });
 
     describe("large dataset", () => {
-      bench("new QueryArray", () => {
+      bench("new QueryableArray", () => {
         queryable(LARGE_ARRAY);
       });
 
@@ -79,7 +79,7 @@ describe("query array benchmarks", () => {
 
   describe("filter", () => {
     describe("small dataset", () => {
-      bench("QueryArray.filter", () => {
+      bench("QueryableArray.filter", () => {
         queryable([...SMALL_ARRAY]).filter((x) => x.id === 5);
       });
       bench("Array.filter (baseline)", () => {
@@ -88,7 +88,7 @@ describe("query array benchmarks", () => {
     });
 
     describe("medium dataset", () => {
-      bench("QueryArray.filter", () => {
+      bench("QueryableArray.filter", () => {
         queryable([...MEDIUM_ARRAY]).filter((x) => x.id === 5);
       });
       bench("Array.filter (baseline)", () => {
@@ -98,7 +98,7 @@ describe("query array benchmarks", () => {
 
     describe("large dataset", () => {
       const LARGE_QUERYABLE = queryable(LARGE_ARRAY);
-      bench("QueryArray.filter", () => {
+      bench("QueryableArray.filter", () => {
         queryable([...LARGE_ARRAY]).filter((x) => x.id === 5);
       });
       bench("Array.filter (baseline)", () => {
@@ -109,7 +109,7 @@ describe("query array benchmarks", () => {
 
   describe("where.is", () => {
     describe("small dataset", () => {
-      bench("QueryArray.where.is", () => {
+      bench("QueryableArray.where.is", () => {
         queryable([...SMALL_ARRAY])
           .where("id")
           .is(5);
@@ -120,7 +120,7 @@ describe("query array benchmarks", () => {
     });
 
     describe("medium dataset", () => {
-      bench("QueryArray.where.is", () => {
+      bench("QueryableArray.where.is", () => {
         queryable([...MEDIUM_ARRAY])
           .where("id")
           .is(5);
@@ -131,7 +131,7 @@ describe("query array benchmarks", () => {
     });
 
     describe("large dataset", () => {
-      bench("QueryArray.where.is", () => {
+      bench("QueryableArray.where.is", () => {
         queryable([...LARGE_ARRAY])
           .where("id")
           .is(5);
@@ -144,7 +144,7 @@ describe("query array benchmarks", () => {
 
   describe("where.satisfies", () => {
     describe("small dataset", () => {
-      bench("QueryArray.where.satisfies", () => {
+      bench("QueryableArray.where.satisfies", () => {
         queryable([...SMALL_ARRAY])
           .where("score")
           .satisfies((s) => s > 50 && s < 70);
@@ -157,7 +157,7 @@ describe("query array benchmarks", () => {
     });
 
     describe("medium dataset", () => {
-      bench("QueryArray.where.satisfies", () => {
+      bench("QueryableArray.where.satisfies", () => {
         queryable([...MEDIUM_ARRAY])
           .where("score")
           .satisfies((s) => s > 5000 && s < 7000);
@@ -170,7 +170,7 @@ describe("query array benchmarks", () => {
     });
 
     describe("large dataset", () => {
-      bench("QueryArray.where.satisfies", () => {
+      bench("QueryableArray.where.satisfies", () => {
         queryable([...LARGE_ARRAY])
           .where("score")
           .satisfies((s) => s > 500_000 && s < 700_000);
@@ -185,7 +185,7 @@ describe("query array benchmarks", () => {
 
   describe("chained or", () => {
     describe("small dataset", () => {
-      bench("QueryArray.where.or.where", () => {
+      bench("QueryableArray.where.or.where", () => {
         queryable([...SMALL_ARRAY])
           .where("type")
           .is("a")
@@ -202,7 +202,7 @@ describe("query array benchmarks", () => {
     });
 
     describe("medium dataset", () => {
-      bench("QueryArray.where.or.where", () => {
+      bench("QueryableArray.where.or.where", () => {
         queryable([...MEDIUM_ARRAY])
           .where("type")
           .is("a")
@@ -218,7 +218,7 @@ describe("query array benchmarks", () => {
     });
 
     describe("large dataset", () => {
-      bench("QueryArray.where.or.where", () => {
+      bench("QueryableArray.where.or.where", () => {
         queryable([...LARGE_ARRAY])
           .where("type")
           .is("a")
@@ -236,7 +236,7 @@ describe("query array benchmarks", () => {
 
   describe("chained and", () => {
     describe("small dataset", () => {
-      bench("QueryArray.where.and.where", () => {
+      bench("QueryableArray.where.and.where", () => {
         queryable([...SMALL_ARRAY])
           .where("type")
           .is("a")
@@ -251,7 +251,7 @@ describe("query array benchmarks", () => {
     });
 
     describe("medium dataset", () => {
-      bench("QueryArray.where.and.where", () => {
+      bench("QueryableArray.where.and.where", () => {
         queryable([...MEDIUM_ARRAY])
           .where("type")
           .is("a")
@@ -266,7 +266,7 @@ describe("query array benchmarks", () => {
     });
 
     describe("large dataset", () => {
-      bench("QueryArray.where.and.where", () => {
+      bench("QueryableArray.where.and.where", () => {
         queryable([...LARGE_ARRAY])
           .where("type")
           .is("a")
@@ -282,7 +282,7 @@ describe("query array benchmarks", () => {
   });
 
   describe("where.some.is", () => {
-    bench("QueryArray.where.some.is", () => {
+    bench("QueryableArray.where.some.is", () => {
       queryable([...ARRAY_WITH_NESTED])
         .where("tags")
         .some()
@@ -296,7 +296,7 @@ describe("query array benchmarks", () => {
   });
 
   describe("where.every.is", () => {
-    bench("QueryArray.where.every.is", () => {
+    bench("QueryableArray.where.every.is", () => {
       queryable([...ARRAY_WITH_NESTED])
         .where("tags")
         .every()
@@ -310,7 +310,7 @@ describe("query array benchmarks", () => {
   });
 
   describe("where.matches", () => {
-    bench("QueryArray.where.matches", () => {
+    bench("QueryableArray.where.matches", () => {
       queryable([...ARRAY_WITH_NESTED])
         .where("details")
         .matches({ category: "premium" });
@@ -324,7 +324,7 @@ describe("query array benchmarks", () => {
 
   describe("sortBy", () => {
     describe("small dataset", () => {
-      bench("QueryArray.sortBy", () => {
+      bench("QueryableArray.sortBy", () => {
         queryable([...SMALL_ARRAY]).sortBy("score", "desc");
       });
       bench("Array.sort (baseline)", () => {
@@ -335,7 +335,7 @@ describe("query array benchmarks", () => {
     });
 
     describe("medium dataset", () => {
-      bench("QueryArray.sortBy", () => {
+      bench("QueryableArray.sortBy", () => {
         queryable([...MEDIUM_ARRAY]).sortBy("score", "desc");
       });
       bench("Array.sort (baseline)", () => {
@@ -346,7 +346,7 @@ describe("query array benchmarks", () => {
     });
 
     describe("large dataset", () => {
-      bench("QueryArray.sortBy", () => {
+      bench("QueryableArray.sortBy", () => {
         queryable([...LARGE_ARRAY]).sortBy("score", "desc");
       });
       bench("Array.sort (baseline)", () => {
@@ -359,7 +359,7 @@ describe("query array benchmarks", () => {
 
   describe("groupBy", () => {
     describe("small dataset", () => {
-      bench("QueryArray.groupBy", () => {
+      bench("QueryableArray.groupBy", () => {
         queryable([...SMALL_ARRAY]).groupBy("type");
       });
       bench("manual groupBy (baseline)", () => {
@@ -372,7 +372,7 @@ describe("query array benchmarks", () => {
     });
 
     describe("medium dataset", () => {
-      bench("QueryArray.groupBy", () => {
+      bench("QueryableArray.groupBy", () => {
         queryable([...MEDIUM_ARRAY]).groupBy("type");
       });
       bench("manual groupBy (baseline)", () => {
@@ -385,7 +385,7 @@ describe("query array benchmarks", () => {
     });
 
     describe("large dataset", () => {
-      bench("QueryArray.groupBy", () => {
+      bench("QueryableArray.groupBy", () => {
         queryable([...LARGE_ARRAY]).groupBy("type");
       });
       bench("manual groupBy (baseline)", () => {
@@ -400,7 +400,7 @@ describe("query array benchmarks", () => {
 
   describe("uniqueBy", () => {
     describe("small dataset", () => {
-      bench("QueryArray.uniqueBy", () => {
+      bench("QueryableArray.uniqueBy", () => {
         queryable([...SMALL_ARRAY]).uniqueBy("id");
       });
       bench("manual uniqueBy with Set (baseline)", () => {
@@ -416,7 +416,7 @@ describe("query array benchmarks", () => {
     });
 
     describe("medium dataset", () => {
-      bench("QueryArray.uniqueBy", () => {
+      bench("QueryableArray.uniqueBy", () => {
         queryable([...MEDIUM_ARRAY]).uniqueBy("id");
       });
       bench("manual uniqueBy with Set (baseline)", () => {
@@ -432,7 +432,7 @@ describe("query array benchmarks", () => {
     });
 
     describe("large dataset", () => {
-      bench("QueryArray.uniqueBy", () => {
+      bench("QueryableArray.uniqueBy", () => {
         queryable([...LARGE_ARRAY]).uniqueBy("id");
       });
       bench("manual uniqueBy with Set (baseline)", () => {

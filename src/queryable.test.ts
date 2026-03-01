@@ -1,6 +1,6 @@
 import { queryable, ql } from "./queryable";
 import { describe, it, expect } from "vitest";
-import { QueryArray } from "./queryArray";
+import { QueryableArray } from "./queryableArray";
 import { isString } from "./typeChecks";
 
 describe("queryable", () => {
@@ -10,7 +10,7 @@ describe("queryable", () => {
   });
 
   it("returns a query array when the data provided is an array", () => {
-    expect(queryable(data)).to.be.instanceOf(QueryArray);
+    expect(queryable(data)).to.be.instanceOf(QueryableArray);
   });
 
   it("returns the data provided wrapped in an array if the data was not in an array to start", () => {

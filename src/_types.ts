@@ -1,14 +1,3 @@
-import { QueryArray } from "./queryArray";
-
-export type Queryable<T> =
-  T extends Array<infer OE>
-    ? QueryArray<OE>
-    : T extends object
-      ? {
-          [K in keyof T]: Queryable<T[K]>;
-        }
-      : T;
-
 export type ElemType<T> = T extends Array<infer E> ? E : never;
 
 export type NestedPartial<T> = {

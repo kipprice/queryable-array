@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { QueryArray } from "./queryArray";
+import { QueryableArray } from "./queryableArray";
 import { isString } from "./typeChecks";
 
 describe("queryable clause (via where)", () => {
   it("can filter by a simple key-based 'where' clause", () => {
     const data = [{ id: 2 }, { id: 3 }, { id: 1 }];
-    expect(new QueryArray(data).where("id").greaterThan(1)).to.eql([
+    expect(new QueryableArray(data).where("id").greaterThan(1)).to.eql([
       { id: 2 },
       { id: 3 },
     ]);
@@ -13,14 +13,14 @@ describe("queryable clause (via where)", () => {
 
   it("can filter by a function-based 'where' clause", () => {
     const data = [{ id: 2 }, { id: 3 }, { id: 1 }];
-    expect(new QueryArray(data).where((t) => t.id.toString()).is("1")).to.eql([
-      { id: 1 },
-    ]);
+    expect(
+      new QueryableArray(data).where((t) => t.id.toString()).is("1"),
+    ).to.eql([{ id: 1 }]);
   });
 
   it("can filter by stringified equality", () => {
     const data = [{ id: 2 }, { id: 3 }, { id: 1 }];
-    expect(new QueryArray(data).where((t) => t).is({ id: 2 })).to.eql([
+    expect(new QueryableArray(data).where((t) => t).is({ id: 2 })).to.eql([
       { id: 2 },
     ]);
   });
@@ -28,7 +28,7 @@ describe("queryable clause (via where)", () => {
   describe("not", () => {
     it("can exclude instead of include based on a simple query", () => {
       const data = ["a", "b", "c"];
-      expect(new QueryArray(data).where((x) => x).not.is("b")).to.eql([
+      expect(new QueryableArray(data).where((x) => x).not.is("b")).to.eql([
         "a",
         "c",
       ]);
@@ -37,7 +37,7 @@ describe("queryable clause (via where)", () => {
     it("can exclude within only one logical part of the query", () => {
       const data = [{ id: "a" }, { id: "b" }, { id: "c" }];
       expect(
-        new QueryArray(data)
+        new QueryableArray(data)
           .where("id")
           .not.is("b")
           .and.where("id")
@@ -48,7 +48,7 @@ describe("queryable clause (via where)", () => {
     it("can exclude on both logical parts of the query", () => {
       const data = [{ id: "a" }, { id: "b" }, { id: "c" }];
       expect(
-        new QueryArray(data)
+        new QueryableArray(data)
           .where("id")
           .not.is("b")
           .and.where("id")
@@ -65,9 +65,9 @@ describe("queryable clause (via where)", () => {
         { id: "c", role: { id: "r3", name: "Artist" } },
       ];
 
-      const qa = new QueryArray(data).where("role");
+      const qa = new QueryableArray(data).where("role");
       expect(
-        new QueryArray(data).where("role").its("name").is("Artist"),
+        new QueryableArray(data).where("role").its("name").is("Artist"),
       ).to.eql([data[0], data[2]]);
     });
 
@@ -79,7 +79,7 @@ describe("queryable clause (via where)", () => {
       ];
 
       expect(
-        new QueryArray(data)
+        new QueryableArray(data)
           .where("details")
           .its("role")
           .its("name")
@@ -95,7 +95,7 @@ describe("queryable clause (via where)", () => {
       ];
 
       expect(
-        new QueryArray(data)
+        new QueryableArray(data)
           .where("id")
           .is("c")
           .and.where("role")
@@ -112,7 +112,7 @@ describe("queryable clause (via where)", () => {
       ];
 
       expect(
-        new QueryArray(data)
+        new QueryableArray(data)
           .where("id")
           .is("c")
           .or.where("role")
@@ -143,7 +143,7 @@ describe("queryable clause (via where)", () => {
       ];
 
       expect(
-        new QueryArray(data).where("roles").some().its("name").is("Artist"),
+        new QueryableArray(data).where("roles").some().its("name").is("Artist"),
       ).to.eql([data[0], data[2]]);
     });
 
@@ -171,7 +171,7 @@ describe("queryable clause (via where)", () => {
       ];
 
       expect(
-        new QueryArray(data)
+        new QueryableArray(data)
           .where("roles")
           .some("role")
           .some("extra arbitrary layer")
@@ -200,7 +200,7 @@ describe("queryable clause (via where)", () => {
       ];
 
       expect(
-        new QueryArray(data)
+        new QueryableArray(data)
           .where("roles")
           .some()
           .its("name")
@@ -232,7 +232,7 @@ describe("queryable clause (via where)", () => {
       ];
 
       expect(
-        new QueryArray(data)
+        new QueryableArray(data)
           .where("roles")
           .some()
           .its("name")
@@ -248,7 +248,12 @@ describe("queryable clause (via where)", () => {
       type T = { a?: number; b?: { c?: string } };
       const data: T[] = [{ a: 1 }, { b: {} }, { b: { c: "abc" } }];
       expect(
-        new QueryArray(data).where("a").is(1).or.where("b").its("c").is("abc"),
+        new QueryableArray(data)
+          .where("a")
+          .is(1)
+          .or.where("b")
+          .its("c")
+          .is("abc"),
       ).to.eql([data[0], data[2]]);
     });
   });
@@ -274,7 +279,11 @@ describe("queryable clause (via where)", () => {
       ];
 
       expect(
-        new QueryArray(data).where("roles").every().its("name").is("Artist"),
+        new QueryableArray(data)
+          .where("roles")
+          .every()
+          .its("name")
+          .is("Artist"),
       ).to.eql([data[2]]);
     });
 
@@ -292,7 +301,7 @@ describe("queryable clause (via where)", () => {
       ];
 
       expect(
-        new QueryArray(data)
+        new QueryableArray(data)
           .where("roles")
           .every("role")
           .every("extra arbitrary layer")
@@ -321,7 +330,7 @@ describe("queryable clause (via where)", () => {
       ];
 
       expect(
-        new QueryArray(data)
+        new QueryableArray(data)
           .where("roles")
           .every("role")
           .its("name")
@@ -353,7 +362,7 @@ describe("queryable clause (via where)", () => {
       ];
 
       expect(
-        new QueryArray(data)
+        new QueryableArray(data)
           .where("roles")
           .every("role")
           .its("name")
@@ -385,7 +394,7 @@ describe("queryable clause (via where)", () => {
       ];
 
       expect(
-        new QueryArray(data)
+        new QueryableArray(data)
           .where("roles")
           .every("role")
           .some("role identifier")
@@ -393,7 +402,7 @@ describe("queryable clause (via where)", () => {
       ).to.eql([data[2]]);
 
       expect(
-        new QueryArray(data)
+        new QueryableArray(data)
           .where("roles")
           .some("role")
           .every("role identifier")
@@ -403,6 +412,8 @@ describe("queryable clause (via where)", () => {
   });
 
   it("gracefully handles querying when the array is empty", () => {
-    expect(new QueryArray<{ id: string }>([]).where("id").is("1")).to.eql([]);
+    expect(new QueryableArray<{ id: string }>([]).where("id").is("1")).to.eql(
+      [],
+    );
   });
 });

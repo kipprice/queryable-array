@@ -1,46 +1,49 @@
 import { describe, it, expect, vi } from "vitest";
-import { QueryArray } from "./queryArray";
+import { QueryableArray } from "./queryableArray";
 import { isNumber, isString } from "./typeChecks";
 
 describe("query array", () => {
   it("can create a query array from an array", () => {
-    expect(new QueryArray(["a", "b", "c"])).to.be.instanceOf(Array);
+    expect(new QueryableArray(["a", "b", "c"])).to.be.instanceOf(Array);
   });
 
-  it("instantiates local instances as regular arrays rather than QueryArrays", () => {
-    const qa = new QueryArray(["a", "b", "c"]);
-    expect(QueryArray[Symbol.species]).to.not.eql(QueryArray);
+  it("instantiates local instances as regular arrays rather than QueryableArrays", () => {
+    const qa = new QueryableArray(["a", "b", "c"]);
+    expect(QueryableArray[Symbol.species]).to.not.eql(QueryableArray);
   });
 
   it("can return the same data that was passed in", () => {
-    expect(new QueryArray(["a", "b", "c"])).to.eql(["a", "b", "c"]);
+    expect(new QueryableArray(["a", "b", "c"])).to.eql(["a", "b", "c"]);
   });
 
   it("can create a query array ", () => {
-    expect(new QueryArray(["a", "b", "c"])).to.eql(["a", "b", "c"]);
+    expect(new QueryableArray(["a", "b", "c"])).to.eql(["a", "b", "c"]);
   });
 
   describe("properties", () => {
     it("can grab the first element of an array", () => {
-      expect(new QueryArray(["a", "b", "c"]).first).to.eq("a");
+      expect(new QueryableArray(["a", "b", "c"]).first).to.eq("a");
     });
 
     it("can grab the last element of an array", () => {
-      expect(new QueryArray(["a", "b", "c"]).last).to.eq("c");
+      expect(new QueryableArray(["a", "b", "c"]).last).to.eq("c");
     });
   });
 
   describe("unique", () => {
     it("can remove duplicates from the array", () => {
       const data = [{ id: "a" }, { id: "b" }, { id: "a" }];
-      expect(new QueryArray(data).unique()).to.eql([{ id: "a" }, { id: "b" }]);
+      expect(new QueryableArray(data).unique()).to.eql([
+        { id: "a" },
+        { id: "b" },
+      ]);
     });
   });
 
   describe("uniqueBy", () => {
     it("can remove duplicates from the array based on a key", () => {
       const data = [{ id: "a" }, { id: "b" }, { id: "a" }];
-      expect(new QueryArray(data).uniqueBy("id")).to.eql([
+      expect(new QueryableArray(data).uniqueBy("id")).to.eql([
         { id: "a" },
         { id: "b" },
       ]);
@@ -48,7 +51,7 @@ describe("query array", () => {
 
     it("can remove duplicates from the array based on a function", () => {
       const data = [{ id: "a" }, { id: "b" }, { id: "a" }];
-      expect(new QueryArray(data).uniqueBy((t) => t.id)).to.eql([
+      expect(new QueryableArray(data).uniqueBy((t) => t.id)).to.eql([
         { id: "a" },
         { id: "b" },
       ]);
@@ -56,7 +59,7 @@ describe("query array", () => {
 
     it("uses object-friendly equality when determining uniqueness", () => {
       const data = [{ id: "a" }, { id: "b" }, { id: "a" }];
-      expect(new QueryArray(data).uniqueBy((t) => t)).to.eql([
+      expect(new QueryableArray(data).uniqueBy((t) => t)).to.eql([
         { id: "a" },
         { id: "b" },
       ]);
@@ -65,7 +68,7 @@ describe("query array", () => {
     it("can perform further filters on the returned unique ", () => {
       const data = [{ id: "a" }, { id: "b" }, { id: "a" }];
       expect(
-        new QueryArray(data)
+        new QueryableArray(data)
           .uniqueBy((t) => t)
           .where("id")
           .is("a"),
@@ -75,7 +78,7 @@ describe("query array", () => {
 
   describe("sort", () => {
     it("can sort a query array by function (ascending by default)", () => {
-      expect(new QueryArray(["c", "a", "b"]).sortBy((v) => v)).to.eql([
+      expect(new QueryableArray(["c", "a", "b"]).sortBy((v) => v)).to.eql([
         "a",
         "b",
         "c",
@@ -83,30 +86,26 @@ describe("query array", () => {
     });
 
     it("can sort a query array by function (descending)", () => {
-      expect(new QueryArray(["c", "a", "b"]).sortBy((v) => v, "desc")).to.eql([
-        "c",
-        "b",
-        "a",
-      ]);
+      expect(
+        new QueryableArray(["c", "a", "b"]).sortBy((v) => v, "desc"),
+      ).to.eql(["c", "b", "a"]);
     });
 
     it("can sort a query array that has multiple of the same value", () => {
-      expect(new QueryArray(["b", "a", "a"]).sortBy((v) => v, "asc")).to.eql([
-        "a",
-        "a",
-        "b",
-      ]);
+      expect(
+        new QueryableArray(["b", "a", "a"]).sortBy((v) => v, "asc"),
+      ).to.eql(["a", "a", "b"]);
     });
 
     it("can sort a query array by key (ascending by default)", () => {
       expect(
-        new QueryArray([{ id: 2 }, { id: 3 }, { id: 1 }]).sortBy("id"),
+        new QueryableArray([{ id: 2 }, { id: 3 }, { id: 1 }]).sortBy("id"),
       ).to.eql([{ id: 1 }, { id: 2 }, { id: 3 }]);
     });
 
     it("can sort a query array by function (descending)", () => {
       const data = [{ id: 2 }, { id: 3 }, { id: 1 }];
-      expect(new QueryArray(data).sortBy("id", "desc")).to.eql([
+      expect(new QueryableArray(data).sortBy("id", "desc")).to.eql([
         { id: 3 },
         { id: 2 },
         { id: 1 },
@@ -114,12 +113,12 @@ describe("query array", () => {
     });
 
     it("can sort an empty array", () => {
-      expect(new QueryArray<{ id: string }>([]).sortBy("id")).to.eql([]);
+      expect(new QueryableArray<{ id: string }>([]).sortBy("id")).to.eql([]);
     });
 
     it("can apply filters to the array after sorting", () => {
       const data = [{ id: 2 }, { id: 3 }, { id: 1 }];
-      expect(new QueryArray(data).sortBy("id").where("id").lte(2)).to.eql([
+      expect(new QueryableArray(data).sortBy("id").where("id").lte(2)).to.eql([
         { id: 1 },
         { id: 2 },
       ]);
@@ -131,7 +130,7 @@ describe("query array", () => {
       const tData = [{ id: "t1", linkedId: "u1" }];
       const uData = [{ id: "u1" }];
       expect(
-        new QueryArray(tData)
+        new QueryableArray(tData)
           .joinWith(uData)
           .whereMy("linkedId")
           .referencesTheir("id")
@@ -143,7 +142,7 @@ describe("query array", () => {
       const tData = [{ id: "t1", linkedId: "u1" }];
       const uData = [{ id: "u1" }];
       expect(
-        new QueryArray(tData)
+        new QueryableArray(tData)
           .joinWith(uData)
           .whereMy((t) => t.linkedId)
           .referencesTheir((u) => u.id)
@@ -155,7 +154,7 @@ describe("query array", () => {
       const tData = [{ id: "t1", linkedIds: ["u1", "u3"] }];
       const uData = [{ id: "u1" }, { id: "u2" }, { id: "u3" }];
       expect(
-        new QueryArray(tData)
+        new QueryableArray(tData)
           .joinWith(uData)
           .whereMy("linkedIds")
           .referencesTheir("id")
@@ -169,7 +168,7 @@ describe("query array", () => {
       const tData = [{ id: "t1", linkedIds: ["u1", "u3"] }];
       const uData = [{ id: "u1" }, { id: "u2" }];
       expect(
-        new QueryArray(tData)
+        new QueryableArray(tData)
           .joinWith(uData)
           .whereMy("linkedIds")
           .referencesTheir("id")
@@ -181,7 +180,7 @@ describe("query array", () => {
       const tData = [{ id: "t1", linkedIds: ["u1", "u3"] }];
       const uData = [{ id: "u1" }, { id: "u2" }];
       expect(
-        new QueryArray(tData)
+        new QueryableArray(tData)
           .joinWith(uData)
           .whereMy("linkedIds")
           .referencesTheir("id")
@@ -198,7 +197,7 @@ describe("query array", () => {
       ];
       const uData = [{ id: "u1" }, { id: "u2" }, { id: "u3" }];
 
-      const qa = new QueryArray(tData)
+      const qa = new QueryableArray(tData)
         .joinWith(uData)
         .whereMy("linkedIds")
         .referencesTheir("id")
@@ -213,14 +212,14 @@ describe("query array", () => {
   describe("indexBy", () => {
     it("can return the data in a map instead of an array", () => {
       const data = [{ id: "data" }];
-      expect(new QueryArray(data).indexBy("id")).to.eql({
+      expect(new QueryableArray(data).indexBy("id")).to.eql({
         data: { id: "data" },
       });
     });
 
     it("can transform the query array into a uniquely-indexed map via a prop name", () => {
       const data = [{ id: 2 }, { id: 3 }, { id: 1 }];
-      expect(new QueryArray(data).indexBy("id")).to.eql({
+      expect(new QueryableArray(data).indexBy("id")).to.eql({
         1: { id: 1 },
         2: { id: 2 },
         3: { id: 3 },
@@ -229,7 +228,7 @@ describe("query array", () => {
 
     it("can transform the query array into a uniquely-indexed map via a function", () => {
       const data = [{ id: 2 }, { id: 3 }, { id: 1 }];
-      expect(new QueryArray(data).indexBy((d) => d.id + 2)).to.eql({
+      expect(new QueryableArray(data).indexBy((d) => d.id + 2)).to.eql({
         3: { id: 1 },
         4: { id: 2 },
         5: { id: 3 },
@@ -237,14 +236,14 @@ describe("query array", () => {
     });
 
     it("gracefully handles indexing when the array is empty", () => {
-      expect(new QueryArray<{ id: string }>([]).indexBy("id")).to.eql({});
+      expect(new QueryableArray<{ id: string }>([]).indexBy("id")).to.eql({});
     });
   });
 
   describe("groupBy", () => {
     it("can return groups of data by a property key", () => {
       expect(
-        new QueryArray([{ a: 1 }, { a: 2 }, { a: 1 }]).groupBy("a"),
+        new QueryableArray([{ a: 1 }, { a: 2 }, { a: 1 }]).groupBy("a"),
       ).to.eql({
         1: [{ a: 1 }, { a: 1 }],
         2: [{ a: 2 }],
@@ -253,7 +252,7 @@ describe("query array", () => {
 
     it("can return groups of data via a bucket fn", () => {
       expect(
-        new QueryArray([{ a: 1 }, { a: 2 }, { a: 1 }]).groupBy((v) =>
+        new QueryableArray([{ a: 1 }, { a: 2 }, { a: 1 }]).groupBy((v) =>
           v.a.toString(),
         ),
       ).to.eql({
@@ -264,7 +263,7 @@ describe("query array", () => {
 
     it("can return groups of data via a multikey bucket fn", () => {
       expect(
-        new QueryArray([{ a: 1 }, { a: 2 }, { a: 1 }]).groupBy((v) => [
+        new QueryableArray([{ a: 1 }, { a: 2 }, { a: 1 }]).groupBy((v) => [
           v.a.toString(),
         ]),
       ).to.eql({
@@ -274,19 +273,23 @@ describe("query array", () => {
     });
 
     it("gracefully handles grouping when the array is empty", () => {
-      expect(new QueryArray<{ id: string }>([]).groupBy("id")).to.eql({});
+      expect(new QueryableArray<{ id: string }>([]).groupBy("id")).to.eql({});
     });
   });
 
   describe("extract", () => {
     it("can extract an array of sub-properties via a property", () => {
       const data = [{ id: "a" }, { id: "b" }, { id: "c" }];
-      expect(new QueryArray(data).extract("id")).to.eql(["a", "b", "c"]);
+      expect(new QueryableArray(data).extract("id")).to.eql(["a", "b", "c"]);
     });
 
     it("can extract an array of sub-properties via a function", () => {
       const data = [{ id: "a" }, { id: "b" }, { id: "c" }];
-      expect(new QueryArray(data).extract((t) => t.id)).to.eql(["a", "b", "c"]);
+      expect(new QueryableArray(data).extract((t) => t.id)).to.eql([
+        "a",
+        "b",
+        "c",
+      ]);
     });
 
     it("automatically flattens the results of the sub-array", () => {
@@ -295,7 +298,7 @@ describe("query array", () => {
         { id: "b" },
         { id: "c", hobbies: ["origami", "running"] },
       ];
-      expect(new QueryArray(data).extract("hobbies")).to.eql([
+      expect(new QueryableArray(data).extract("hobbies")).to.eql([
         "running",
         "skateboarding",
         "origami",
@@ -309,7 +312,7 @@ describe("query array", () => {
         { id: "b", hobbies: [] },
         { id: "c", hobbies: ["origami", "running"] },
       ];
-      expect(new QueryArray(data).extract("hobbies").unique()).to.eql([
+      expect(new QueryableArray(data).extract("hobbies").unique()).to.eql([
         "running",
         "skateboarding",
         "origami",
@@ -319,7 +322,7 @@ describe("query array", () => {
     it("can perform further filtering on the flattened results", () => {
       const data = [{ id: "a" }, { id: "b" }, { id: "c" }];
       expect(
-        new QueryArray(data)
+        new QueryableArray(data)
           .extract("id")
           .where((t) => t)
           .is("b"),
@@ -344,10 +347,10 @@ describe("query array", () => {
           ],
         },
       ];
-      const qa = new QueryArray(data).extract("hobbies");
+      const qa = new QueryableArray(data).extract("hobbies");
 
       expect(
-        new QueryArray(data).extract("hobbies").where("id").is("h1"),
+        new QueryableArray(data).extract("hobbies").where("id").is("h1"),
       ).to.eql([
         { id: "h1", name: "running" },
         { id: "h1", name: "running" },
@@ -358,7 +361,7 @@ describe("query array", () => {
   describe("where", () => {
     it("can filter by a simple key-based 'where' clause", () => {
       const data = [{ id: 2 }, { id: 3 }, { id: 1 }];
-      expect(new QueryArray(data).where("id").greaterThan(1)).to.eql([
+      expect(new QueryableArray(data).where("id").greaterThan(1)).to.eql([
         { id: 2 },
         { id: 3 },
       ]);
@@ -366,15 +369,15 @@ describe("query array", () => {
 
     it("can filter by a function-based 'where' clause", () => {
       const data = [{ id: 2 }, { id: 3 }, { id: 1 }];
-      expect(new QueryArray(data).where((t) => t.id.toString()).is("1")).to.eql(
-        [{ id: 1 }],
-      );
+      expect(
+        new QueryableArray(data).where((t) => t.id.toString()).is("1"),
+      ).to.eql([{ id: 1 }]);
     });
 
     describe("not", () => {
       it("can exclude instead of include based on a simple query", () => {
         const data = ["a", "b", "c"];
-        expect(new QueryArray(data).where((x) => x).not.is("b")).to.eql([
+        expect(new QueryableArray(data).where((x) => x).not.is("b")).to.eql([
           "a",
           "c",
         ]);
@@ -383,7 +386,7 @@ describe("query array", () => {
       it("can exclude within only one logical part of the query", () => {
         const data = [{ id: "a" }, { id: "b" }, { id: "c" }];
         expect(
-          new QueryArray(data)
+          new QueryableArray(data)
             .where("id")
             .not.is("b")
             .and.where("id")
@@ -394,7 +397,7 @@ describe("query array", () => {
       it("can exclude on both logical parts of the query", () => {
         const data = [{ id: "a" }, { id: "b" }, { id: "c" }];
         expect(
-          new QueryArray(data)
+          new QueryableArray(data)
             .where("id")
             .not.is("b")
             .and.where("id")
@@ -411,9 +414,9 @@ describe("query array", () => {
           { id: "c", role: { id: "r3", name: "Artist" } },
         ];
 
-        const qa = new QueryArray(data).where("role");
+        const qa = new QueryableArray(data).where("role");
         expect(
-          new QueryArray(data).where("role").its("name").is("Artist"),
+          new QueryableArray(data).where("role").its("name").is("Artist"),
         ).to.eql([data[0], data[2]]);
       });
 
@@ -425,7 +428,7 @@ describe("query array", () => {
         ];
 
         expect(
-          new QueryArray(data)
+          new QueryableArray(data)
             .where("details")
             .its("role")
             .its("name")
@@ -441,7 +444,7 @@ describe("query array", () => {
         ];
 
         expect(
-          new QueryArray(data)
+          new QueryableArray(data)
             .where("id")
             .is("c")
             .and.where("role")
@@ -458,7 +461,7 @@ describe("query array", () => {
         ];
 
         expect(
-          new QueryArray(data)
+          new QueryableArray(data)
             .where("id")
             .is("c")
             .or.where("role")
@@ -489,7 +492,11 @@ describe("query array", () => {
         ];
 
         expect(
-          new QueryArray(data).where("roles").some().its("name").is("Artist"),
+          new QueryableArray(data)
+            .where("roles")
+            .some()
+            .its("name")
+            .is("Artist"),
         ).to.eql([data[0], data[2]]);
       });
 
@@ -517,7 +524,7 @@ describe("query array", () => {
         ];
 
         expect(
-          new QueryArray(data)
+          new QueryableArray(data)
             .where("roles")
             .some("role")
             .some("extra arbitrary layer")
@@ -546,7 +553,7 @@ describe("query array", () => {
         ];
 
         expect(
-          new QueryArray(data)
+          new QueryableArray(data)
             .where("roles")
             .some()
             .its("name")
@@ -578,7 +585,7 @@ describe("query array", () => {
         ];
 
         expect(
-          new QueryArray(data)
+          new QueryableArray(data)
             .where("roles")
             .some()
             .its("name")
@@ -594,7 +601,7 @@ describe("query array", () => {
         type T = { a?: number; b?: { c?: string } };
         const data: T[] = [{ a: 1 }, { b: {} }, { b: { c: "abc" } }];
         expect(
-          new QueryArray(data)
+          new QueryableArray(data)
             .where("a")
             .is(1)
             .or.where("b")
@@ -625,7 +632,11 @@ describe("query array", () => {
         ];
 
         expect(
-          new QueryArray(data).where("roles").every().its("name").is("Artist"),
+          new QueryableArray(data)
+            .where("roles")
+            .every()
+            .its("name")
+            .is("Artist"),
         ).to.eql([data[2]]);
       });
 
@@ -643,7 +654,7 @@ describe("query array", () => {
         ];
 
         expect(
-          new QueryArray(data)
+          new QueryableArray(data)
             .where("roles")
             .every("role")
             .every("extra arbitrary layer")
@@ -672,7 +683,7 @@ describe("query array", () => {
         ];
 
         expect(
-          new QueryArray(data)
+          new QueryableArray(data)
             .where("roles")
             .every("role")
             .its("name")
@@ -704,7 +715,7 @@ describe("query array", () => {
         ];
 
         expect(
-          new QueryArray(data)
+          new QueryableArray(data)
             .where("roles")
             .every("role")
             .its("name")
@@ -736,7 +747,7 @@ describe("query array", () => {
         ];
 
         expect(
-          new QueryArray(data)
+          new QueryableArray(data)
             .where("roles")
             .every("role")
             .some("role identifier")
@@ -744,7 +755,7 @@ describe("query array", () => {
         ).to.eql([data[2]]);
 
         expect(
-          new QueryArray(data)
+          new QueryableArray(data)
             .where("roles")
             .some("role")
             .every("role identifier")
@@ -754,7 +765,9 @@ describe("query array", () => {
     });
 
     it("gracefully handles querying when the array is empty", () => {
-      expect(new QueryArray<{ id: string }>([]).where("id").is("1")).to.eql([]);
+      expect(new QueryableArray<{ id: string }>([]).where("id").is("1")).to.eql(
+        [],
+      );
     });
   });
 
@@ -762,7 +775,7 @@ describe("query array", () => {
     it("can apply and logic to the query array", () => {
       const data = [{ id: 2 }, { id: 3 }, { id: 1 }];
       expect(
-        new QueryArray(data)
+        new QueryableArray(data)
           .where("id")
           .greaterThan(1)
           .and.where("id")
@@ -778,7 +791,7 @@ describe("query array", () => {
         { id: 2, name: "d" },
       ];
       expect(
-        new QueryArray(data)
+        new QueryableArray(data)
           .where("id")
           .greaterThan(1)
           .and.where("id")
@@ -791,7 +804,7 @@ describe("query array", () => {
     it("can chain 'and' and 'or' logic", () => {
       const data = [{ id: 2 }, { id: 3 }, { id: 1 }];
       expect(
-        new QueryArray(data)
+        new QueryableArray(data)
           .where("id")
           .satisfies((id) => isNumber(id))
           .and.where("id")
@@ -806,7 +819,7 @@ describe("query array", () => {
     it("can apply or logic to the query array", () => {
       const data = [{ id: 2 }, { id: 3 }, { id: 1 }];
       expect(
-        new QueryArray(data)
+        new QueryableArray(data)
           .where("id")
           .lte(1)
           .or.where("id")
@@ -817,7 +830,7 @@ describe("query array", () => {
     it("can chain multiple 'or's together", () => {
       const data = [{ id: 2 }, { id: 3 }, { id: 1 }];
       expect(
-        new QueryArray(data)
+        new QueryableArray(data)
           .where("id")
           .satisfies((id) => false)
           .or.where("id")
@@ -830,14 +843,14 @@ describe("query array", () => {
     it("does not include duplicates when or-ing", () => {
       const data = [{ id: 2 }, { id: 3 }, { id: 1 }];
       expect(
-        new QueryArray(data).where("id").lte(2).or.where("id").is(1),
+        new QueryableArray(data).where("id").lte(2).or.where("id").is(1),
       ).to.eql([{ id: 2 }, { id: 1 }]);
     });
 
     it("preserves a sort order when applying 'or' logic", () => {
       const data = [{ id: 2 }, { id: 3 }, { id: 1 }];
       expect(
-        new QueryArray(data)
+        new QueryableArray(data)
           .sortBy("id")
           .where("id")
           .lte(1)
@@ -856,12 +869,12 @@ describe("query array", () => {
 
     describe("map", () => {
       it("returns the same result as Array.map", () => {
-        const qa = new QueryArray(data);
+        const qa = new QueryableArray(data);
         expect(qa.map((t) => t.id)).to.eql(data.map((t) => t.id));
       });
 
       it("passes index and array to the callback", () => {
-        const qa = new QueryArray(data);
+        const qa = new QueryableArray(data);
         const indices: number[] = [];
         qa.map((_, idx) => {
           indices.push(idx);
@@ -870,141 +883,145 @@ describe("query array", () => {
         expect(indices).to.eql([0, 1, 2]);
       });
 
-      it("returns a QueryArray instance", () => {
-        expect(new QueryArray(data).map((t) => t.id)).to.be.instanceOf(
-          QueryArray,
+      it("returns a QueryableArray instance", () => {
+        expect(new QueryableArray(data).map((t) => t.id)).to.be.instanceOf(
+          QueryableArray,
         );
       });
     });
 
     describe("filter", () => {
       it("returns the same result as Array.filter", () => {
-        const qa = new QueryArray(data);
+        const qa = new QueryableArray(data);
         expect(qa.filter((t) => t.id > 1)).to.eql(data.filter((t) => t.id > 1));
       });
 
-      it("returns a QueryArray instance", () => {
-        expect(new QueryArray(data).filter((t) => t.id > 1)).to.be.instanceOf(
-          QueryArray,
-        );
+      it("returns a QueryableArray instance", () => {
+        expect(
+          new QueryableArray(data).filter((t) => t.id > 1),
+        ).to.be.instanceOf(QueryableArray);
       });
     });
 
     describe("concat", () => {
       it("returns the same result as Array.concat", () => {
         const extra = [{ id: 4, name: "delta" }];
-        const qa = new QueryArray(data);
+        const qa = new QueryableArray(data);
         expect(qa.concat(extra)).to.eql(data.concat(extra));
       });
 
-      it("returns a QueryArray instance", () => {
+      it("returns a QueryableArray instance", () => {
         const extra = [{ id: 4, name: "delta" }];
-        const qa = new QueryArray(data);
-        expect(qa.concat(extra)).to.be.instanceOf(QueryArray);
+        const qa = new QueryableArray(data);
+        expect(qa.concat(extra)).to.be.instanceOf(QueryableArray);
       });
     });
 
     describe("slice", () => {
       it("returns the same result as Array.slice with start", () => {
-        const qa = new QueryArray(data);
+        const qa = new QueryableArray(data);
         expect(qa.slice(1)).to.eql(data.slice(1));
       });
 
       it("returns the same result as Array.slice with start and end", () => {
-        const qa = new QueryArray(data);
+        const qa = new QueryableArray(data);
         expect(qa.slice(0, 2)).to.eql(data.slice(0, 2));
       });
 
-      it("returns a QueryArray instance", () => {
-        expect(new QueryArray(data).slice(2)).to.be.instanceOf(QueryArray);
+      it("returns a QueryableArray instance", () => {
+        expect(new QueryableArray(data).slice(2)).to.be.instanceOf(
+          QueryableArray,
+        );
       });
     });
 
     describe("flat", () => {
       it("returns the same result as Array.flat", () => {
-        const nested = new QueryArray([[1, 2], [3]]);
+        const nested = new QueryableArray([[1, 2], [3]]);
         expect(nested.flat()).to.eql([[1, 2], [3]].flat());
       });
 
-      it("returns a QueryArray instance", () => {
-        const nested = new QueryArray([[1, 2], [3]]);
-        expect(nested.flat()).to.be.instanceOf(QueryArray);
+      it("returns a QueryableArray instance", () => {
+        const nested = new QueryableArray([[1, 2], [3]]);
+        expect(nested.flat()).to.be.instanceOf(QueryableArray);
       });
     });
 
     describe("flatMap", () => {
       it("returns the same result as Array.flatMap", () => {
-        const qa = new QueryArray(data);
+        const qa = new QueryableArray(data);
         expect(qa.flatMap((t) => [t.id, t.id * 10])).to.eql(
           data.flatMap((t) => [t.id, t.id * 10]),
         );
       });
 
-      it("returns a QueryArray instance", () => {
-        const nested = new QueryArray(data);
+      it("returns a QueryableArray instance", () => {
+        const nested = new QueryableArray(data);
         expect(nested.flatMap((t) => [t.id, t.id * 10])).to.be.instanceOf(
-          QueryArray,
+          QueryableArray,
         );
       });
     });
 
     describe("with", () => {
       it("returns the same result as Array.with", () => {
-        const qa = new QueryArray(data);
+        const qa = new QueryableArray(data);
         const replacement = { id: 99, name: "zeta" };
         expect(qa.with(1, replacement)).to.eql(data.with(1, replacement));
       });
 
-      it("returns a QueryArray instance", () => {
-        const qa = new QueryArray(data);
+      it("returns a QueryableArray instance", () => {
+        const qa = new QueryableArray(data);
         const replacement = { id: 99, name: "zeta" };
-        expect(qa.with(1, replacement)).to.be.instanceOf(QueryArray);
+        expect(qa.with(1, replacement)).to.be.instanceOf(QueryableArray);
       });
     });
 
     describe("toSorted", () => {
       it("returns the same result as Array.toSorted", () => {
-        const qa = new QueryArray(data);
+        const qa = new QueryableArray(data);
         const compareFn = (a: (typeof data)[0], b: (typeof data)[0]) =>
           b.id - a.id;
         expect(qa.toSorted(compareFn)).to.eql(data.toSorted(compareFn));
       });
 
       it("does not mutate the original array", () => {
-        const qa = new QueryArray([...data]);
+        const qa = new QueryableArray([...data]);
         qa.toSorted((a, b) => b.id - a.id);
         expect(qa).to.eql(data);
         expect(qa.data).to.eql(data);
       });
 
-      it("returns a QueryArray instance", () => {
-        const qa = new QueryArray([...data]);
-        expect(qa.toSorted((a, b) => b.id - a.id)).to.be.instanceOf(QueryArray);
+      it("returns a QueryableArray instance", () => {
+        const qa = new QueryableArray([...data]);
+        expect(qa.toSorted((a, b) => b.id - a.id)).to.be.instanceOf(
+          QueryableArray,
+        );
       });
     });
 
     describe("toReversed", () => {
       it("returns the same result as Array.toReversed", () => {
-        const qa = new QueryArray(data);
+        const qa = new QueryableArray(data);
         expect(qa.toReversed()).to.eql(data.toReversed());
       });
 
       it("does not mutate the original array", () => {
-        const qa = new QueryArray(data);
+        const qa = new QueryableArray(data);
         qa.toReversed();
         expect(qa).to.eql(data);
         expect(qa.data).to.eql(data);
       });
 
-      it("returns a QueryArray instance", () => {
-        const qa = new QueryArray(data);
-        expect(qa.toReversed()).to.be.instanceOf(QueryArray);
+      it("returns a QueryableArray instance", () => {
+        const qa = new QueryableArray(data);
+        expect(qa.toReversed()).to.be.instanceOf(QueryableArray);
       });
     });
 
     describe("toSpliced", () => {
       it("returns the same result as Array.toSpliced", () => {
-        const qa = new QueryArray(data);
+        const qa = new QueryableArray(data);
         const newItem = { id: 99, name: "zeta" };
         expect(qa.toSpliced(1, 1, newItem)).to.eql(
           data.toSpliced(1, 1, newItem),
@@ -1012,121 +1029,121 @@ describe("query array", () => {
       });
 
       it("does not mutate the original array", () => {
-        const qa = new QueryArray(data);
+        const qa = new QueryableArray(data);
         qa.toSpliced(1, 1);
         expect(qa).to.eql(data);
         expect(qa.data).to.eql(data);
       });
 
-      it("returns a QueryArray instance", () => {
-        const qa = new QueryArray(data);
-        expect(qa.toSpliced(1)).to.be.instanceOf(QueryArray);
+      it("returns a QueryableArray instance", () => {
+        const qa = new QueryableArray(data);
+        expect(qa.toSpliced(1)).to.be.instanceOf(QueryableArray);
       });
     });
 
     describe("fill", () => {
       it("returns the same result as Array.fill", () => {
         const arr = [1, 2, 3, 4];
-        const qa = new QueryArray([...arr]);
+        const qa = new QueryableArray([...arr]);
         expect(qa.fill(0, 1, 3)).to.eql([...arr].fill(0, 1, 3));
       });
 
       it("mutates in place", () => {
-        const qa = new QueryArray([1, 2, 3]);
+        const qa = new QueryableArray([1, 2, 3]);
         qa.fill(0);
         expect(qa).to.eql([0, 0, 0]);
       });
 
-      it("returns a QueryArray instance", () => {
-        const qa = new QueryArray([1, 2, 3, 4]);
-        expect(qa.fill(0)).to.be.instanceOf(QueryArray);
+      it("returns a QueryableArray instance", () => {
+        const qa = new QueryableArray([1, 2, 3, 4]);
+        expect(qa.fill(0)).to.be.instanceOf(QueryableArray);
       });
     });
 
     describe("sort", () => {
       it("returns the same result as Array.sort", () => {
         const arr = [3, 1, 2];
-        const qa = new QueryArray([...arr]);
+        const qa = new QueryableArray([...arr]);
         expect(qa.sort((a, b) => a - b)).to.eql([...arr].sort((a, b) => a - b));
       });
 
       it("mutates in place", () => {
-        const qa = new QueryArray([3, 1, 2]);
+        const qa = new QueryableArray([3, 1, 2]);
         qa.sort((a, b) => a - b);
         expect(qa).to.eql([1, 2, 3]);
         expect(qa.data).to.eql([1, 2, 3]);
       });
 
-      it("returns a QueryArray instance", () => {
-        const qa = new QueryArray([3, 1, 2]);
-        expect(qa.sort()).to.be.instanceOf(QueryArray);
+      it("returns a QueryableArray instance", () => {
+        const qa = new QueryableArray([3, 1, 2]);
+        expect(qa.sort()).to.be.instanceOf(QueryableArray);
       });
     });
 
     describe("reverse", () => {
       it("returns the same result as Array.reverse", () => {
         const arr = [1, 2, 3];
-        const qa = new QueryArray([...arr]);
+        const qa = new QueryableArray([...arr]);
         expect(qa.reverse()).to.eql([...arr].reverse());
       });
 
       it("mutates in place", () => {
-        const qa = new QueryArray([1, 2, 3]);
+        const qa = new QueryableArray([1, 2, 3]);
         qa.reverse();
         expect(qa).to.eql([3, 2, 1]);
         expect(qa.data).to.eql([3, 2, 1]);
       });
 
-      it("returns a QueryArray instance", () => {
-        const qa = new QueryArray([3, 1, 2]);
-        expect(qa.reverse()).to.be.instanceOf(QueryArray);
+      it("returns a QueryableArray instance", () => {
+        const qa = new QueryableArray([3, 1, 2]);
+        expect(qa.reverse()).to.be.instanceOf(QueryableArray);
       });
     });
 
     describe("splice", () => {
       it("returns the removed elements like Array.splice", () => {
         const arr = [1, 2, 3, 4];
-        const qa = new QueryArray([...arr]);
+        const qa = new QueryableArray([...arr]);
         expect(qa.splice(1, 2)).to.eql([...arr].splice(1, 2));
       });
 
       it("mutates in place", () => {
-        const qa = new QueryArray([1, 2, 3, 4]);
+        const qa = new QueryableArray([1, 2, 3, 4]);
         qa.splice(1, 2);
         expect(qa).to.eql([1, 4]);
         expect(qa.data).to.eql([1, 4]);
       });
 
-      it("returns a QueryArray instance", () => {
-        const qa = new QueryArray([1, 2, 3, 4]);
-        expect(qa.splice(1, 1)).to.be.instanceOf(QueryArray);
+      it("returns a QueryableArray instance", () => {
+        const qa = new QueryableArray([1, 2, 3, 4]);
+        expect(qa.splice(1, 1)).to.be.instanceOf(QueryableArray);
       });
     });
 
     describe("copyWithin", () => {
       it("returns the same result as Array.copyWithin", () => {
         const arr = [1, 2, 3, 4, 5];
-        const qa = new QueryArray([...arr]);
+        const qa = new QueryableArray([...arr]);
         expect(qa.copyWithin(0, 3)).to.eql([...arr].copyWithin(0, 3));
       });
 
       it("mutates in place", () => {
-        const qa = new QueryArray([1, 2, 3, 4, 5]);
+        const qa = new QueryableArray([1, 2, 3, 4, 5]);
         qa.copyWithin(0, 3);
         expect(qa).to.eql([4, 5, 3, 4, 5]);
         expect(qa.data).to.eql([4, 5, 3, 4, 5]);
       });
 
-      it("returns a QueryArray instance", () => {
-        const qa = new QueryArray([1, 2, 3, 4, 5]);
-        expect(qa.copyWithin(0, 3)).to.be.instanceOf(QueryArray);
+      it("returns a QueryableArray instance", () => {
+        const qa = new QueryableArray([1, 2, 3, 4, 5]);
+        expect(qa.copyWithin(0, 3)).to.be.instanceOf(QueryableArray);
       });
     });
 
     describe("includes", () => {
       it("returns the same result as Array.includes", () => {
         const arr = [1, 2, 3];
-        const qa = new QueryArray(arr);
+        const qa = new QueryableArray(arr);
         expect(qa.includes(2)).to.eql(arr.includes(2));
         expect(qa.includes(9)).to.eql(arr.includes(9));
       });
@@ -1134,26 +1151,26 @@ describe("query array", () => {
 
     describe("find", () => {
       it("returns the same result as Array.find", () => {
-        const qa = new QueryArray(data);
+        const qa = new QueryableArray(data);
         expect(qa.find((t) => t.id === 2)).to.eql(data.find((t) => t.id === 2));
       });
 
       it("returns undefined when not found", () => {
-        const qa = new QueryArray(data);
+        const qa = new QueryableArray(data);
         expect(qa.find((t) => t.id === 99)).to.be.undefined;
       });
     });
 
     describe("findIndex", () => {
       it("returns the same result as Array.findIndex", () => {
-        const qa = new QueryArray(data);
+        const qa = new QueryableArray(data);
         expect(qa.findIndex((t) => t.id === 2)).to.eql(
           data.findIndex((t) => t.id === 2),
         );
       });
 
       it("returns -1 when not found", () => {
-        const qa = new QueryArray(data);
+        const qa = new QueryableArray(data);
         expect(qa.findIndex((t) => t.id === 99)).to.eq(-1);
       });
     });
@@ -1161,7 +1178,7 @@ describe("query array", () => {
     describe("findLast", () => {
       it("returns the same result as Array.findLast", () => {
         const arr = [1, 2, 3, 2, 1];
-        const qa = new QueryArray(arr);
+        const qa = new QueryableArray(arr);
         expect(qa.findLast((t) => t === 2)).to.eql(
           arr.findLast((t) => t === 2),
         );
@@ -1171,7 +1188,7 @@ describe("query array", () => {
     describe("findLastIndex", () => {
       it("returns the same result as Array.findLastIndex", () => {
         const arr = [1, 2, 3, 2, 1];
-        const qa = new QueryArray(arr);
+        const qa = new QueryableArray(arr);
         expect(qa.findLastIndex((t) => t === 2)).to.eql(
           arr.findLastIndex((t) => t === 2),
         );
@@ -1181,7 +1198,7 @@ describe("query array", () => {
     describe("indexOf", () => {
       it("returns the same result as Array.indexOf", () => {
         const arr = [1, 2, 3];
-        const qa = new QueryArray(arr);
+        const qa = new QueryableArray(arr);
         expect(qa.indexOf(2)).to.eql(arr.indexOf(2));
         expect(qa.indexOf(9)).to.eql(arr.indexOf(9));
       });
@@ -1190,14 +1207,14 @@ describe("query array", () => {
     describe("lastIndexOf", () => {
       it("returns the same result as Array.lastIndexOf", () => {
         const arr = [1, 2, 1, 3];
-        const qa = new QueryArray(arr);
+        const qa = new QueryableArray(arr);
         expect(qa.lastIndexOf(1)).to.eql(arr.lastIndexOf(1));
       });
     });
 
     describe("forEach", () => {
       it("visits the same elements as Array.forEach", () => {
-        const qa = new QueryArray(data);
+        const qa = new QueryableArray(data);
         const arrVisited: number[] = [];
         data.forEach((t) => arrVisited.push(t.id));
         const qaVisited: number[] = [];
@@ -1208,7 +1225,7 @@ describe("query array", () => {
 
     describe("every", () => {
       it("returns the same result as Array.every", () => {
-        const qa = new QueryArray(data);
+        const qa = new QueryableArray(data);
         expect(qa.every((t) => t.id > 0)).to.eql(data.every((t) => t.id > 0));
         expect(qa.every((t) => t.id > 1)).to.eql(data.every((t) => t.id > 1));
       });
@@ -1216,7 +1233,7 @@ describe("query array", () => {
 
     describe("some", () => {
       it("returns the same result as Array.some", () => {
-        const qa = new QueryArray(data);
+        const qa = new QueryableArray(data);
         expect(qa.some((t) => t.id === 2)).to.eql(data.some((t) => t.id === 2));
         expect(qa.some((t) => t.id === 99)).to.eql(
           data.some((t) => t.id === 99),
@@ -1226,7 +1243,7 @@ describe("query array", () => {
 
     describe("reduce", () => {
       it("returns the same result as Array.reduce", () => {
-        const qa = new QueryArray(data);
+        const qa = new QueryableArray(data);
         expect(qa.reduce((acc, t) => acc + t.id, 0)).to.eql(
           data.reduce((acc, t) => acc + t.id, 0),
         );
@@ -1236,7 +1253,7 @@ describe("query array", () => {
     describe("reduceRight", () => {
       it("returns the same result as Array.reduceRight", () => {
         const arr = [1, 2, 3];
-        const qa = new QueryArray(arr);
+        const qa = new QueryableArray(arr);
         expect(qa.reduceRight((acc, t) => acc + t, 0)).to.eql(
           arr.reduceRight((acc, t) => acc + t, 0),
         );
@@ -1245,12 +1262,12 @@ describe("query array", () => {
 
     describe("pop", () => {
       it("returns the last element like Array.pop", () => {
-        const qa = new QueryArray([1, 2, 3]);
+        const qa = new QueryableArray([1, 2, 3]);
         expect(qa.pop()).to.eq(3);
       });
 
       it("mutates in place", () => {
-        const qa = new QueryArray([1, 2, 3]);
+        const qa = new QueryableArray([1, 2, 3]);
         qa.pop();
         expect(qa).to.eql([1, 2]);
         expect(qa.data).to.eql([1, 2]);
@@ -1259,12 +1276,12 @@ describe("query array", () => {
 
     describe("shift", () => {
       it("returns the first element like Array.shift", () => {
-        const qa = new QueryArray([1, 2, 3]);
+        const qa = new QueryableArray([1, 2, 3]);
         expect(qa.shift()).to.eq(1);
       });
 
       it("mutates in place", () => {
-        const qa = new QueryArray([1, 2, 3]);
+        const qa = new QueryableArray([1, 2, 3]);
         qa.shift();
         expect(qa).to.eql([2, 3]);
         expect(qa.data).to.eql([2, 3]);
@@ -1273,12 +1290,12 @@ describe("query array", () => {
 
     describe("push", () => {
       it("returns the new length like Array.push", () => {
-        const qa = new QueryArray([1, 2, 3]);
+        const qa = new QueryableArray([1, 2, 3]);
         expect(qa.push(4)).to.eq(4);
       });
 
       it("mutates in place", () => {
-        const qa = new QueryArray([1, 2, 3]);
+        const qa = new QueryableArray([1, 2, 3]);
         qa.push(4);
         expect(qa).to.eql([1, 2, 3, 4]);
         expect(qa.data).to.eql([1, 2, 3, 4]);
@@ -1287,12 +1304,12 @@ describe("query array", () => {
 
     describe("unshift", () => {
       it("returns the new length like Array.unshift", () => {
-        const qa = new QueryArray([1, 2, 3]);
+        const qa = new QueryableArray([1, 2, 3]);
         expect(qa.unshift(0)).to.eq(4);
       });
 
       it("mutates in place", () => {
-        const qa = new QueryArray([1, 2, 3]);
+        const qa = new QueryableArray([1, 2, 3]);
         qa.unshift(0);
         expect(qa).to.eql([0, 1, 2, 3]);
         expect(qa.data).to.eql([0, 1, 2, 3]);
@@ -1301,7 +1318,7 @@ describe("query array", () => {
 
     describe("at", () => {
       it("returns the same result as Array.at", () => {
-        const qa = new QueryArray(data);
+        const qa = new QueryableArray(data);
         expect(qa.at(0)).to.eql(data.at(0));
         expect(qa.at(-1)).to.eql(data.at(-1));
       });
@@ -1309,21 +1326,21 @@ describe("query array", () => {
 
     describe("entries", () => {
       it("returns the same entries as Array.entries", () => {
-        const qa = new QueryArray(data);
+        const qa = new QueryableArray(data);
         expect([...qa.entries()]).to.eql([...data.entries()]);
       });
     });
 
     describe("values", () => {
       it("returns the same values as Array.values", () => {
-        const qa = new QueryArray(data);
+        const qa = new QueryableArray(data);
         expect([...qa.values()]).to.eql([...data.values()]);
       });
     });
 
     describe("keys", () => {
       it("returns the same keys as Array.keys", () => {
-        const qa = new QueryArray(data);
+        const qa = new QueryableArray(data);
         expect([...qa.keys()]).to.eql([...data.keys()]);
       });
     });
@@ -1331,13 +1348,13 @@ describe("query array", () => {
     describe("join", () => {
       it("returns the same result as Array.join", () => {
         const arr = ["a", "b", "c"];
-        const qa = new QueryArray(arr);
+        const qa = new QueryableArray(arr);
         expect(qa.join(", ")).to.eql(arr.join(", "));
       });
 
       it("uses the default separator like Array.join", () => {
         const arr = ["a", "b", "c"];
-        const qa = new QueryArray(arr);
+        const qa = new QueryableArray(arr);
         expect(qa.join()).to.eql(arr.join());
       });
     });
@@ -1345,7 +1362,7 @@ describe("query array", () => {
     describe("toString", () => {
       it("returns the same result as Array.toString", () => {
         const arr = [1, 2, 3];
-        const qa = new QueryArray(arr);
+        const qa = new QueryableArray(arr);
         expect(qa.toString()).to.eql(arr.toString());
       });
     });
@@ -1353,19 +1370,19 @@ describe("query array", () => {
     describe("toLocaleString", () => {
       it("returns the same result as Array.toLocaleString with no args", () => {
         const arr = [1, 2, 3];
-        const qa = new QueryArray(arr);
+        const qa = new QueryableArray(arr);
         expect(qa.toLocaleString()).to.eql(arr.toLocaleString());
       });
 
       it("returns the same result as Array.toLocaleString with locale args", () => {
         const arr = [1, 2, 3];
-        const qa = new QueryArray(arr);
+        const qa = new QueryableArray(arr);
         expect(qa.toLocaleString("fr")).to.eql(arr.toLocaleString("fr"));
       });
 
       it("returns the same result as Array.toLocaleString with locale args", () => {
         const arr = [1, 2, 3];
-        const qa = new QueryArray(arr);
+        const qa = new QueryableArray(arr);
         expect(qa.toLocaleString("fr", { compactDisplay: "short" })).to.eql(
           arr.toLocaleString("fr", { compactDisplay: "short" }),
         );
