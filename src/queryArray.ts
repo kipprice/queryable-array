@@ -1,28 +1,13 @@
-import type { QueryClause } from "./queryClause.types";
-import {
-  isArray,
-  isDefined,
-  isFunction,
-  isNumber,
-  isObject,
-  isObjectOrArray,
-  isString,
-} from "./typeChecks";
-import {
-  applyLogicToFlattenedGroups,
-  flattenWithGroups,
-  isDeepEqual,
-  isEqual,
-  isMatch,
-} from "./utils";
 import {
   SortOrder,
   type ElemType,
   type Key,
-  type NestedPartial,
   type UnionToIntersection,
 } from "./_types";
 import { assert } from "./assertions";
+import { createQueryableClause } from "./queryableClause";
+import type { QueryClause } from "./queryableClause.types";
+import { isArray, isDefined, isFunction } from "./typeChecks";
 
 /**-------------------------------------------------------------------------
  * QueryArray
@@ -34,7 +19,7 @@ import { assert } from "./assertions";
  * -------------------------------------------------------------------------
  */
 export class QueryArray<T> extends Array<T> {
-  protected __currentData: T[];
+  protected _currentData: T[];
   protected _originalData: T[];
 
   [idx: number]: T;
@@ -46,17 +31,8 @@ export class QueryArray<T> extends Array<T> {
     return Array;
   }
 
-  protected get _currentData() {
-    return this.__currentData;
-  }
-
-  protected set _currentData(d: T[]) {
-    this.__currentData = d;
-    this._populateInnerStore();
-  }
-
   public get data() {
-    return this.__currentData;
+    return this._currentData;
   }
 
   public constructor(
@@ -69,7 +45,7 @@ export class QueryArray<T> extends Array<T> {
   ) {
     assert(isArray(elements));
     super(elements.length);
-    this.__currentData = elements;
+    this._currentData = elements;
     this._originalData = originalData ?? elements.slice(0, elements.length);
 
     // ensure that the QueryArray behaves like a regular array, but largely
@@ -83,11 +59,16 @@ export class QueryArray<T> extends Array<T> {
    * array
    **/
   protected _populateInnerStore() {
-    this.__currentData.forEach((e, idx) => {
-      this[idx] = e;
+    this.forEach((_, idx) => {
+      const e = this._currentData[idx];
+      if (isDefined(e)) {
+        this[idx] = e;
+      } else {
+        delete this[idx];
+      }
     });
 
-    this.length = this.__currentData.length;
+    this.length = this._currentData.length;
   }
 
   /**
@@ -158,9 +139,12 @@ export class QueryArray<T> extends Array<T> {
       return out;
     };
 
-    this._currentData = filterByUniqueness(this._currentData);
-    this._originalData = filterByUniqueness(this._originalData);
-    return this;
+    return new QueryArray(
+      filterByUniqueness(this._currentData),
+      filterByUniqueness(this._originalData),
+      this._currentLogic,
+      this._currentSet,
+    );
   }
 
   /**
@@ -202,84 +186,12 @@ export class QueryArray<T> extends Array<T> {
 
     // apply the sort both to our current value and our original values,
     // so we can preserve sort order when the sort occurs before an 'or'
-    this._currentData = [...this._currentData].sort(sortFn);
-    this._originalData = [...this._originalData].sort(sortFn);
-
-    return this;
-  }
-
-  /**
-   * combine two arrays via a shared key and return a new QueryArray of the
-   * joined version of the model
-   *
-   * @param   them
-   *          Elements to join with the current
-   *
-   * @returns A chainable joiner that can be used to set a new key to the
-   *          result of the join
-   */
-  public joinWith<U>(them: U[]) {
-    return {
-      /** a key on the current array that references a value in the provided array */
-      via: <KT extends keyof T>(myKey: KT) => {
-        return {
-          /** a key on the provided array that will have the same value as the
-           * result of retrieving the above key */
-          whichReferences: <KU extends keyof U>(theirKey: KU) => {
-            return {
-              /**
-               * what key on the original element the joined value / values
-               * should be persisted to
-               *
-               * @param   joinKey
-               *          A new or existing key for type T that the data that
-               *          was joined will be added to
-               *
-               * @returns A new QueryArray with objects that contain the joined
-               *          data
-               */
-              storedTo: <
-                K extends string | number,
-                TU extends T & {
-                  [k in K]?: T[KT] extends Array<unknown> ? U[] : U;
-                },
-              >(
-                joinKey: K,
-              ) => {
-                const joinFn = (arr: T[]) => {
-                  return arr.map((t) => {
-                    const myData = t[myKey];
-                    if (isArray(myData)) {
-                      return {
-                        ...t,
-                        [joinKey]: myData.map((uId) =>
-                          them.find((u) => u[theirKey] === uId),
-                        ),
-                      } as TU;
-                    } else {
-                      return {
-                        ...t,
-                        [joinKey]: them.find(
-                          (u) =>
-                            (u[theirKey] as unknown) === (t[myKey] as unknown),
-                        ),
-                      } as TU;
-                    }
-                  });
-                };
-
-                // we return a true new query array here because the types have
-                // now changed
-                return new QueryArray<TU>(
-                  joinFn(this._currentData),
-                  joinFn(this._originalData),
-                );
-              },
-            };
-          },
-        };
-      },
-    };
+    return new QueryArray(
+      [...this._currentData].sort(sortFn),
+      [...this._originalData].sort(sortFn),
+      this._currentLogic,
+      this._currentSet,
+    );
   }
 
   /**
@@ -383,6 +295,116 @@ export class QueryArray<T> extends Array<T> {
     );
   }
 
+  public joinWith<U>(them: U[]) {
+    return {
+      /**
+       * a key on the current array that references a value in the provided
+       * array. This can be either a value or an array of values
+       *
+       * @param   myKeyGetter
+       *          A direct property name or function by which the referenceable
+       *          id(s) can be extracted via from an element in my array
+       *
+       * @returns A chainable joiner that can be used to set a new key to the
+       *          result of the join
+       **/
+      whereMy: <KT extends keyof T, X>(myKeyGetter: KT | ((t: T) => X)) => {
+        const myValueGetter = isFunction(myKeyGetter)
+          ? (t: T) => myKeyGetter(t)
+          : (t: T) => t[myKeyGetter];
+
+        return {
+          /**
+           * a key on the provided array that will have the same value as the
+           * result of retrieving the above key
+           *
+           * @param   theirKeyGetter
+           *          A direct property name or function by which the referenceable
+           *          id(s) can be extracted via from an element in their array
+           *
+           * @returns A chainable joiner that can be used to set a new key to the
+           *          result of the join
+           **/
+          referencesTheir: <KU extends keyof U, Y>(
+            theirKeyGetter: KU | ((u: U) => Y),
+          ) => {
+            const theirValueGetter = isFunction(theirKeyGetter)
+              ? (u: U) => theirKeyGetter(u)
+              : (u: U) => u[theirKeyGetter];
+
+            return {
+              /**
+               * what key on the original element the joined value / values
+               * should be persisted to
+               *
+               * @param   joinKey
+               *          A new or existing key for type T that the data that
+               *          was joined will be added to
+               *
+               * @param   options
+               *          Any additional tweaks to how this join should be
+               *          performed.
+               *
+               * @returns A new QueryArray with objects that contain the joined
+               *          data
+               **/
+              storedTo: <
+                K extends string | number,
+                TU extends T & {
+                  [k in K]?: T[KT] extends Array<unknown> ? U[] : U;
+                } = T & {
+                  [k in K]?: T[KT] extends Array<unknown> ? U[] : U;
+                },
+              >(
+                joinKey: K,
+                {
+                  keepUndefinedReferences,
+                }: {
+                  /** if true, retains `undefined` as elements in a joined array
+                   * element being referenced couldn't be found */
+                  keepUndefinedReferences?: boolean;
+                } = {},
+              ): QueryArray<TU> => {
+                const joinFn = (arr: T[]) => {
+                  return arr.map((t) => {
+                    const myData = myValueGetter(t);
+                    if (isArray(myData)) {
+                      const theirData = myData.map((uId) =>
+                        them.find((u) => theirValueGetter(u) === uId),
+                      );
+
+                      return {
+                        ...t,
+                        [joinKey]: keepUndefinedReferences
+                          ? theirData
+                          : theirData.filter((u) => !!u),
+                      } as TU;
+                    } else {
+                      const theirData = them.find(
+                        (u) => theirValueGetter(u) === myData,
+                      );
+                      return {
+                        ...t,
+                        [joinKey]: theirData,
+                      } as TU;
+                    }
+                  });
+                };
+
+                // we return a true new query array here because the types have
+                // now changed
+                return new QueryArray<TU>(
+                  joinFn(this._currentData),
+                  joinFn(this._originalData),
+                );
+              },
+            };
+          },
+        };
+      },
+    };
+  }
+
   /**
    * start filtering the array to elements that have a particular value for the
    * specified property name.
@@ -431,188 +453,19 @@ export class QueryArray<T> extends Array<T> {
    *          down based on further chained function calls.
    */
   public where<X>(key: keyof T | ((t: T) => X)) {
-    const createResolutionFns = <Z>(
-      valueGetter: (t: T) => Z,
-      arrayLogic: ("some" | "every")[] = [],
-      negated = false,
-    ) => {
-      type ZE = Z extends Array<unknown> ? ElemType<Z> : Z;
-
-      const _resolve = <Z>(resolver: (z: ZE) => boolean) => {
-        const elems =
-          this._currentLogic === "and" ? this._currentData : this._originalData;
-
-        const filteredElems = elems.filter((t) => {
-          if (this._currentSet.has(t)) {
-            return true;
-          }
-
-          const z = t ? valueGetter(t) : undefined;
-
-          const shouldHandleAsArray = isArray(z) && arrayLogic.length > 0;
-
-          let result;
-          if (shouldHandleAsArray) {
-            result = applyLogicToFlattenedGroups(
-              z as any,
-              [...arrayLogic],
-              resolver,
-            );
-          } else {
-            result = resolver(z as ZE);
-          }
-
-          const resultWithNegation = negated ? !result : result;
-          if (resultWithNegation) {
-            this._currentSet.add(t);
-          }
-          return resultWithNegation;
-        });
-
-        this._currentData = filteredElems;
-        return this;
-      };
-
-      const out = {
-        is: (y: ZE | null | undefined) =>
-          isObjectOrArray(y)
-            ? _resolve((z: ZE) => isEqual(z, y))
-            : _resolve((z: ZE) => y === z),
-        eq: (y: ZE | null | undefined) => out.is(y as any),
-        equals: (y: ZE | null | undefined) => out.is(y as any),
-
-        isNull: () => _resolve((z: ZE) => z === null),
-        isUndefined: () => _resolve((z: ZE) => z === undefined),
-        isNullish: () => _resolve((z: ZE) => z === undefined || z === null),
-
-        in: (ys: ZE[]) =>
-          _resolve(
-            (z: ZE) => !!ys.find((y) => (y === z ? true : isEqual(z, y))),
-          ),
-
-        satisfies: (fn: (z: ZE) => boolean) => _resolve(fn),
-
-        greaterThan: (y: ZE) =>
-          _resolve((z: ZE) => {
-            if (isNumber(z) || isString(z)) {
-              return z > y;
-            } else {
-              return false;
-            }
-          }),
-        gt: (y: ZE) => (out as any).greaterThan(y),
-
-        greaterThanOrEqualTo: (y: Z) =>
-          _resolve((z: ZE) => {
-            if (isNumber(z) || isString(z)) {
-              return z >= y;
-            } else {
-              return false;
-            }
-          }),
-        gte: (y: ZE) => (out as any).greaterThanOrEqualTo(y),
-
-        lessThan: (y: ZE) =>
-          _resolve((z: ZE) => {
-            if (isNumber(z) || isString(z)) {
-              return z < y;
-            } else {
-              return false;
-            }
-          }),
-        lt: (y: ZE) => (out as any).lessThan(y),
-
-        lessThanOrEqualTo: (y: ZE) =>
-          _resolve((z: ZE) => {
-            if (isNumber(z) || isString(z)) {
-              return z <= y;
-            } else {
-              return false;
-            }
-          }),
-        lte: (y: ZE) => (out as any).lessThanOrEqualTo(y),
-
-        matches: (y: NestedPartial<ZE>) =>
-          _resolve((z: ZE) => {
-            if (isObjectOrArray(z) && isObjectOrArray(y)) {
-              return isMatch(z, y);
-            } else {
-              return false;
-            }
-          }),
-
-        deepEquals: (y: ZE) =>
-          _resolve((z: ZE) => {
-            if (isObjectOrArray(z) && isObjectOrArray(y)) {
-              return isDeepEqual(z, y);
-            } else {
-              return false;
-            }
-          }),
-
-        includes: (y: ElemType<Z>) =>
-          _resolve((z: ZE) => {
-            if (isArray(z)) {
-              return !!z.find((e) => isEqual(y, e));
-            } else {
-              return false;
-            }
-          }),
-      } as unknown as QueryClause<Z, QueryArray<T>>;
-
-      return out;
-    };
-
-    const createNestableResolver = <Z>(
-      valueGetter: (t: T) => Z,
-      arrayLogic: ("some" | "every")[] = [],
-      negated = false,
-    ) => {
-      const out = {
-        ...createResolutionFns(valueGetter, arrayLogic, negated),
-
-        get not() {
-          return createNestableResolver(valueGetter, arrayLogic, !negated);
-        },
-
-        its: <K extends Z extends Array<unknown> ? keyof ElemType<Z> : keyof Z>(
-          prop: K,
-        ) => {
-          return createNestableResolver(
-            (t: T) => {
-              const z = valueGetter(t);
-
-              return isArray(z) && arrayLogic
-                ? z.map((e) => (e as ElemType<Z>)?.[prop as keyof ElemType<Z>])
-                : z?.[prop as keyof Z];
-            },
-            arrayLogic,
-            negated,
-          );
-        },
-
-        some: () => {
-          return createNestableResolver(
-            (t) => flattenWithGroups(valueGetter(t) as Array<unknown>),
-            [...arrayLogic, "some"],
-            negated,
-          );
-        },
-
-        every: () => {
-          return createNestableResolver(
-            (t) => flattenWithGroups(valueGetter(t) as Array<unknown>),
-            [...arrayLogic, "every"],
-            negated,
-          );
-        },
-      } as unknown as QueryClause<Z, QueryArray<T>>;
-
-      return out;
-    };
-
-    return createNestableResolver(
-      isFunction(key) ? (t) => key(t) as X : (t) => t?.[key] as X,
+    return createQueryableClause<T, X, QueryArray<T>>(
+      isFunction(key) ? (t: T) => key(t) : (t: T) => t[key] as X,
+      this._currentData,
+      this._originalData,
+      this._currentLogic,
+      this._currentSet,
+      (filteredElems) =>
+        new QueryArray(
+          filteredElems,
+          this._originalData,
+          this._currentLogic,
+          this._currentSet,
+        ),
     );
   }
 
@@ -682,9 +535,11 @@ export class QueryArray<T> extends Array<T> {
     );
   }
 
-  public toSpliced(...args: Parameters<Array<T>["toSpliced"]>) {
+  public toSpliced(startIdx: number, deleteCount?: number, replaceItem?: T) {
     return new QueryArray(
-      this._currentData.toSpliced(...args),
+      isDefined(deleteCount) && isDefined(replaceItem)
+        ? this._currentData.toSpliced(startIdx, deleteCount, replaceItem)
+        : this._currentData.toSpliced(startIdx, deleteCount),
       this._originalData,
       this._currentLogic,
       this._currentSet,
@@ -722,7 +577,7 @@ export class QueryArray<T> extends Array<T> {
   public splice(...args: Parameters<Array<T>["splice"]>) {
     const out = this._currentData.splice(...args);
     this._populateInnerStore();
-    return out;
+    return new QueryArray(out);
   }
 
   public copyWithin(target: number, start: number, end?: number) {
@@ -774,7 +629,9 @@ export class QueryArray<T> extends Array<T> {
     return this._currentData.forEach(...args);
   }
 
-  public every<S extends T>(predicate: (t: T) => t is S): this is S[] {
+  public every(predicate: (t: T) => boolean): boolean;
+  public every<S extends T>(predicate: (t: T) => t is S): this is S[];
+  public every<S extends T = T>(predicate: (t: T) => t is S): this is S[] {
     return this._currentData.every(predicate);
   }
 

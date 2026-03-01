@@ -7,9 +7,11 @@ import {
   isNumber,
   isObject,
   isObjectOrArray,
+  isPrimitive,
   isString,
   isSymbol,
 } from "./typeChecks";
+import { assert } from "./assertions";
 
 /**
  * retrieve all keys for a given object, cast into `keyof` types of the same
@@ -132,9 +134,13 @@ export const isEqual = <T>(a: T, b: T) => {
   if (a === b) {
     return true;
   }
+  if (isPrimitive(a) || isPrimitive(b)) {
+    return false;
+  }
   if (isSymbol(a) && isSymbol(b)) {
     return a.toString() === b.toString();
   }
+
   return JSON.stringify(a) === JSON.stringify(b);
 };
 
@@ -305,15 +311,7 @@ export const applyLogicToFlattenedGroups = <E = any>(
 
   // if this array isn't flattened, just evaluate it as normal
   if (arr[0] !== START_GROUP_DIVIDER) {
-    return (
-      arr.length > 0 &&
-      arr[arrayLogic[0]!]((e) => {
-        if (e === START_GROUP_DIVIDER || e === END_GROUP_DIVIDER) {
-          throw new Error("too few array logics passed");
-        }
-        return isBoolean(e) ? e : resolver(e as E);
-      })
-    );
+    return arr.length > 0 && arr[arrayLogic[0]!]((e) => resolver(e as E));
   }
 
   // loop through each item in order to be able to sequentially create and
@@ -328,9 +326,7 @@ export const applyLogicToFlattenedGroups = <E = any>(
         continue;
       }
       currentLayer += 1;
-      if (!layers[currentLayer]) {
-        layers[currentLayer] = [];
-      }
+      layers[currentLayer] = [];
 
       // once we hit the end of the current group, replace the original
       // values with the resolved values, based on the current logic layer
@@ -384,9 +380,7 @@ export const applyLogicToFlattenedGroups = <E = any>(
   }
 
   // if we have not popped off all of our layers, something has gone wrong
-  if (layers.length !== 1) {
-    throw new Error("too few array logics passed");
-  }
+  assert(layers.length == 1);
 
   // the final resolution happens at the top level of the resolved array and returns just a single boolean
   const finalLogic = arrayLogic[0];
@@ -397,10 +391,14 @@ export const applyLogicToFlattenedGroups = <E = any>(
     finalGroup.length > 0 &&
     (finalLogic === "some"
       ? finalGroup.some((e) => {
-          return isBoolean(e) ? e : resolver(e as E);
+          // if we've made it this far, we must have already applied some logic to
+          // the previous levels and thus can just return their results
+          return e;
         })
       : finalGroup.every((e) => {
-          return isBoolean(e) ? e : resolver(e as E);
+          // if we've made it this far, we must have already applied some logic to
+          // the previous levels and thus can just return their results
+          return e;
         }))
   );
 };

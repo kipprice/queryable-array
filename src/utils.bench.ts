@@ -38,7 +38,7 @@ const DEEP_OBJECT = {
   },
 };
 
-describe.skip("utils benchmarks", () => {
+describe("utils benchmarks", () => {
   describe("getKeys", () => {
     const obj = DEEP_OBJECT;
     bench("getKeys", () => {

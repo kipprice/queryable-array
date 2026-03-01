@@ -21,6 +21,11 @@ export function isBoolean(test: unknown): test is boolean {
   return typeof test === "boolean";
 }
 
+export function isPrimitive(test: unknown): test is string | number | boolean {
+  const type = typeof test;
+  return type === "string" || type === "number" || type === "boolean";
+}
+
 /**
  * verify if the provided test value is a symbol
  */

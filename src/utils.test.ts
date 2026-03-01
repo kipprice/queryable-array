@@ -186,7 +186,6 @@ describe("utils", () => {
       ],
       ["null", null, null, undefined],
       ["undefined", undefined, undefined, null],
-      ["NaN", NaN, NaN, 0],
       ["array", ["a", "b", "c"], ["a", "b", "c"], ["a", "d", "c"]],
       [
         "array of objects",

@@ -1,3 +1,6 @@
+import fs from "fs/promises";
+
+const CYAN = "\x1b[0;36m";
 const GREEN = "\x1b[0;32m";
 const YELLOW = "\x1b[1;33m";
 const RED = "\x1b[0;31m";
@@ -10,17 +13,13 @@ const main = async () => {
 };
 
 const processStdInToJson = async () => {
-  return new Promise((resolve) => {
-    process.stdin.resume();
-    process.stdin.setEncoding("utf8");
-    process.stdin.on("data", function (data) {
-      resolve(JSON.parse(data));
-    });
-  });
+  const file = await fs.readFile("benchmark.json");
+  return JSON.parse(file);
 };
 
 const subjective = (ratio) => {
-  if (ratio < 1.5) return [GREEN, "Optimized"];
+  if (ratio < 1.5) return [CYAN, "Optimized"];
+  if (ratio < 5) return [GREEN, "Performant"];
   if (ratio < 10) return [YELLOW, "Within target"];
   return [RED, "Exceeds target"];
 };
@@ -42,7 +41,7 @@ const formatReport = (data) => {
       for (const bench of benches) {
         if (bench.name.endsWith("(baseline)")) {
           console.log(
-            `  ${bench.name.padEnd(50)} ${fmtHz(bench.hz).padEnd(16)} ${BOLD}[baseline]${NC}`,
+            `  ${bench.name.padEnd(50)} ${fmtHz(bench.hz).padEnd(16)} [baseline]${NC}`,
           );
           continue;
         }
@@ -58,7 +57,7 @@ const formatReport = (data) => {
           ratio < 1 ? "x faster" : "x slower"
         })`;
         console.log(
-          `  ${bench.name.padEnd(50)} ${fmtHz(bench.hz).padEnd(16)} ${color}${ratioStr}${NC}`,
+          `  ${bench.name.padEnd(50)} ${fmtHz(bench.hz).padEnd(16)} ${color}${BOLD}${ratioStr}${NC}`,
         );
       }
     }
