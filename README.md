@@ -7,7 +7,6 @@ A lightweight (14kb) TS-first querying language designed to make it easy to work
 This library has a narrow scope that really optimizes for readability (without sacrificing too much in performance). It is designed for teams that are doing a significant amount of filtering and/or joining in JS / TS code (client-side or server-side) and want the queries they are writing to be somewhat self documenting. For example, consider:
 
 ```ts
-
 const authors = [
   { id: 'a1', name: 'Kip', contributorSince: '2008-01-01' }, 
   // ...
