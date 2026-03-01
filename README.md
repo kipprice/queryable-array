@@ -63,3 +63,11 @@ const tags = songs
 ## Types
 
 Everything in the queryable array library is written in Typescript and infers the shape of objects automatically to present appropriate methods and properties depending on where in the chain a given queryable array is. Performing `where` queries are non-modifying, meaning the underlying array wrapped by the queryable array remains as it was even as the queryable array version gets successively more narrowed.
+
+## Bug Reports
+
+Please report any found bugs on the library's GH [Issues](https://github.com/kipprice/queryable-array/issues) page.
+
+## Contributing
+
+If you're interested in helping improve this library, feel free to open a PR against the [repo](https://github.com/kipprice/queryable-array/pulls).
