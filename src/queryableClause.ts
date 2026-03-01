@@ -1,4 +1,3 @@
-import type { ElemType, NestedPartial } from "./utils.types";
 import type {
   ComparableQueryClause,
   QueryClause,
@@ -17,14 +16,19 @@ import {
   isEqual,
   isMatch,
 } from "./utils";
+import type {
+  ElemType,
+  NestedPartial,
+  UnionToIntersection,
+} from "./utils.types";
 
-export const createQueryableClause = <T, X, RT extends T[]>(
+export const createQueryableClause = <T, X, RT extends T[] = T[]>(
   valueGetter: (t: T) => X,
   currentData: T[],
-  originalData: T[],
+  originalData: T[] = currentData,
   logic: "and" | "or" = "and",
-  currentSet: Set<T>,
-  onResolve: (t: T[]) => RT,
+  currentSet: Set<T> = new Set<T>(),
+  onResolve: (t: T[]) => RT = (t) => t as RT,
 ) => {
   const createResolutionFns = <T, Z>(
     valueGetter: (t: T) => Z,
@@ -42,7 +46,12 @@ export const createQueryableClause = <T, X, RT extends T[]>(
           return true;
         }
 
-        const z = t ? valueGetter(t as T) : undefined;
+        let z: Z | undefined;
+        try {
+          z = valueGetter(t as unknown as T);
+        } catch (e) {
+          z = undefined;
+        }
 
         const shouldHandleAsArray = isArray(z) && arrayLogic.length > 0;
 
@@ -79,7 +88,11 @@ export const createQueryableClause = <T, X, RT extends T[]>(
       equals: (y: ZE | null | undefined) => out.is(y as any),
 
       isNull: () => _resolve((z: ZE) => z === null),
-      isUndefined: () => _resolve((z: ZE) => z === undefined),
+      isUndefined: () =>
+        _resolve((z: ZE) => {
+          console.log("Z", z, "UNDEFINED?", z === undefined);
+          return z === undefined;
+        }),
       isNullish: () => _resolve((z: ZE) => z === undefined || z === null),
       isEmpty: () =>
         _resolve((z: ZE) =>
@@ -232,5 +245,7 @@ export const createQueryableClause = <T, X, RT extends T[]>(
     return out;
   };
 
-  return createNestableResolver(valueGetter);
+  return createNestableResolver(valueGetter) as UnionToIntersection<
+    QueryClause<X, RT>
+  >;
 };

@@ -1,59 +1,241 @@
 import { describe, expect, it } from "vitest";
-import { QueryableArray } from "./queryableArray";
+import { createQueryableClause } from "./queryableClause";
+import {
+  BaseQueryClause,
+  ComparableQueryClause,
+} from "./queryableClause.types";
 import { isString } from "./typeChecks";
+import { ElemType } from "./utils.types";
 
 describe("queryable clause (via where)", () => {
-  it("can filter by a simple key-based 'where' clause", () => {
-    const data = [{ id: 2 }, { id: 3 }, { id: 1 }];
-    expect(new QueryableArray(data).where("id").greaterThan(1)).to.eql([
-      { id: 2 },
-      { id: 3 },
-    ]);
-  });
+  describe("resolvers", () => {
+    describe("is", () => {
+      const aliases = [
+        ["is"],
+        ["eq"],
+        ["equals"],
+      ] as (keyof BaseQueryClause<any>)[][];
+      it.each(aliases)("can verify primitive equality via %s", (alias) => {
+        const data = [
+          { str: "a", num: 1, bool: true },
+          { str: "b", num: 2, bool: false },
+        ];
+        const qc = createQueryableClause((t) => t.bool, data).is;
+        expect(
+          (
+            createQueryableClause((t) => t.str, data)[alias] as CallableFunction
+          )("b"),
+        ).to.eql([data[1]]);
+        expect(
+          (
+            createQueryableClause((t) => t.num, data)[alias] as CallableFunction
+          )(1),
+        ).to.eql([data[0]]);
+        expect(
+          (
+            createQueryableClause((t) => t.bool, data)[
+              alias
+            ] as CallableFunction
+          )(true),
+        ).to.eql([data[0]]);
+      });
 
-  it("can filter by a function-based 'where' clause", () => {
-    const data = [{ id: 2 }, { id: 3 }, { id: 1 }];
-    expect(
-      new QueryableArray(data).where((t) => t.id.toString()).is("1"),
-    ).to.eql([{ id: 1 }]);
-  });
+      it.each(aliases)("can verify object equality via %s", (alias) => {
+        const data = [
+          { str: "a", num: 1, bool: true },
+          { str: "b", num: 2, bool: false },
+        ];
+        const qc = createQueryableClause((t) => t, data);
+        expect(
+          (qc[alias] as CallableFunction)({ str: "a", num: 1, bool: true }),
+        ).to.eql([data[0]]);
+      });
 
-  it("can filter by stringified equality", () => {
-    const data = [{ id: 2 }, { id: 3 }, { id: 1 }];
-    expect(new QueryableArray(data).where((t) => t).is({ id: 2 })).to.eql([
-      { id: 2 },
-    ]);
+      it.each(aliases)("can verify array equality via %s", (alias) => {
+        const data = [{ arr: [1, 2] }, { arr: [2, 3] }];
+        const qc = createQueryableClause((t) => t.arr, data);
+        expect((qc[alias] as CallableFunction)([2, 3])).to.eql([data[1]]);
+      });
+    });
+
+    describe("isNull", () => {
+      it("can check if an element is null", () => {
+        const data = [{}, [], 0, undefined, null];
+        const qc = createQueryableClause((t) => t, data);
+        expect(qc.isNull()).to.eql([null]);
+      });
+    });
+
+    describe("isUndefined", () => {
+      it("can check if an element is undefined", () => {
+        const data = [{}, [], 0, undefined, null];
+        const qc = createQueryableClause((t) => t, data);
+        expect(qc.isUndefined()).to.eql([undefined]);
+      });
+    });
+
+    describe("isNullish", () => {
+      it("can check if an element is null or undefined", () => {
+        const data = [{}, [], 0, undefined, null];
+        const qc = createQueryableClause((t) => t, data);
+        expect(qc.isNullish()).to.eql([undefined, null]);
+      });
+    });
+
+    describe("isEmpty", () => {
+      it("can check if an object is empty", () => {
+        const data = [{}, { id: "2" }];
+        const qc = createQueryableClause((t) => t, data);
+        expect(qc.isEmpty()).to.eql([{}]);
+      });
+
+      it("can check if an array is empty", () => {
+        const data = [{ tags: [{ id: "t1" }] }, { tags: [] }];
+        const qc = createQueryableClause((t) => t.tags, data);
+        expect(qc.isEmpty()).to.eql([{ tags: [] }]);
+      });
+
+      it("ignores empty queries for all other types", () => {
+        const data = [{ tags: [{ id: "t1" }] }, { tags: [] }];
+        const qc = createQueryableClause((t) => t.tags, data);
+        expect((qc.some().its("id") as any).isEmpty()).to.eql([]);
+      });
+    });
+
+    describe("in", () => {
+      it("can confirm that an element is contained in the specified array", () => {
+        const data = ["a", "b", "c"];
+        const qc = createQueryableClause((t) => t, data);
+        expect(qc.in(["b", "d", "a"])).to.eql(["a", "b"]);
+      });
+    });
+
+    describe("satisfies", () => {
+      it("can confirm that an element satisfies a certain function", () => {
+        const data = ["abc", "def", "hijk"];
+        const qc = createQueryableClause((t) => t, data);
+        expect(qc.satisfies((x) => x.length === 3)).to.eql(["abc", "def"]);
+      });
+    });
+
+    describe("greaterThan", () => {
+      const aliases = [["greaterThan"], ["gt"]] as (keyof ComparableQueryClause<
+        any,
+        any
+      >)[][];
+      it.each(aliases)(
+        "can confirm that an element is greater than the specified value via %s",
+        (alias) => {
+          const data = [5, 10, 15, 20, 25];
+          const qc = createQueryableClause((t) => t, data);
+          expect((qc[alias] as CallableFunction)(15)).to.eql([20, 25]);
+        },
+      );
+    });
+
+    describe("greaterThanOrEqualTo", () => {
+      const aliases = [
+        ["greaterThanOrEqualTo"],
+        ["gte"],
+      ] as (keyof ComparableQueryClause<any, any>)[][];
+      it.each(aliases)(
+        "can confirm that an element is greater than the specified value via %s",
+        (alias) => {
+          const data = [5, 10, 15, 20, 25];
+          const qc = createQueryableClause((t) => t, data);
+          expect((qc[alias] as CallableFunction)(15)).to.eql([15, 20, 25]);
+        },
+      );
+    });
+
+    describe("lessThan", () => {
+      const aliases = [["lessThan"], ["lt"]] as (keyof ComparableQueryClause<
+        any,
+        any
+      >)[][];
+      it.each(aliases)(
+        "can confirm that an element is greater than the specified value via %s",
+        (alias) => {
+          const data = [5, 10, 15, 20, 25];
+          const qc = createQueryableClause((t) => t, data);
+          expect((qc[alias] as CallableFunction)(15)).to.eql([5, 10]);
+        },
+      );
+    });
+
+    describe("lessThanOrEqualTo", () => {
+      const aliases = [
+        ["lessThanOrEqualTo"],
+        ["lte"],
+      ] as (keyof ComparableQueryClause<any, any>)[][];
+      it.each(aliases)(
+        "can confirm that an element is greater than the specified value via %s",
+        (alias) => {
+          const data = [5, 10, 15, 20, 25];
+          const qc = createQueryableClause((t) => t, data);
+          expect((qc[alias] as CallableFunction)(15)).to.eql([5, 10, 15]);
+        },
+      );
+    });
+
+    describe("matches", () => {
+      it("can confirm that an element matches a provided partial object", () => {
+        const data = [
+          { id: 1, name: "A" },
+          { id: 2, name: "B" },
+          { id: 3, name: "C" },
+        ];
+        const qc = createQueryableClause((t) => t, data);
+        expect(qc.matches({ name: "B" })).to.eql([data[1]]);
+      });
+    });
+
+    describe("deepEquals", () => {
+      it("can confirm that an element matches a provided object", () => {
+        const data = [
+          { id: 1, name: "A" },
+          { id: 2, name: "B" },
+          { id: 3, name: "C" },
+        ];
+        const qc = createQueryableClause((t) => t, data);
+        expect(qc.deepEquals({ id: 2, name: "B" })).to.eql([data[1]]);
+      });
+
+      it("does not consider a partial match valid", () => {
+        const data = [
+          { id: 1, name: "A" },
+          { id: 2, name: "B" },
+          { id: 3, name: "C" },
+        ];
+        const qc = createQueryableClause((t) => t, data);
+        expect(qc.deepEquals({ name: "B" } as ElemType<typeof data>)).to.eql(
+          [],
+        );
+      });
+    });
+
+    describe("includes", () => {
+      it("can confirm that an element matches a provided partial array", () => {
+        const data = [
+          [1, 2, 3],
+          [3, 4, 5],
+          [5, 6, 7],
+        ];
+        const qc = createQueryableClause((t) => t, data);
+
+        expect(qc.includes(5)).to.eql([data[1], data[2]]);
+      });
+    });
   });
 
   describe("not", () => {
-    it("can exclude instead of include based on a simple query", () => {
-      const data = ["a", "b", "c"];
-      expect(new QueryableArray(data).where((x) => x).not.is("b")).to.eql([
-        "a",
-        "c",
-      ]);
-    });
-
-    it("can exclude within only one logical part of the query", () => {
-      const data = [{ id: "a" }, { id: "b" }, { id: "c" }];
-      expect(
-        new QueryableArray(data)
-          .where("id")
-          .not.is("b")
-          .and.where("id")
-          .greaterThan("b"),
-      ).to.eql([{ id: "c" }]);
-    });
-
-    it("can exclude on both logical parts of the query", () => {
-      const data = [{ id: "a" }, { id: "b" }, { id: "c" }];
-      expect(
-        new QueryableArray(data)
-          .where("id")
-          .not.is("b")
-          .and.where("id")
-          .not.is("c"),
-      ).to.eql([{ id: "a" }]);
+    it("can negate a query clause", () => {
+      const data = [
+        { str: "a", num: 1, bool: true },
+        { str: "b", num: 2, bool: false },
+      ];
+      const qc = createQueryableClause((t) => t.bool, data);
+      expect(qc.not.is(true)).to.eql([data[1]]);
     });
   });
 
@@ -66,7 +248,9 @@ describe("queryable clause (via where)", () => {
       ];
 
       expect(
-        new QueryableArray(data).where("role").its("name").is("Artist"),
+        createQueryableClause((t) => t.role, data)
+          .its("name")
+          .is("Artist"),
       ).to.eql([data[0], data[2]]);
     });
 
@@ -78,43 +262,8 @@ describe("queryable clause (via where)", () => {
       ];
 
       expect(
-        new QueryableArray(data)
-          .where("details")
+        createQueryableClause((t) => t.details, data)
           .its("role")
-          .its("name")
-          .is("Artist"),
-      ).to.eql([data[0], data[2]]);
-    });
-
-    it("can filter via where in nested objects with and logic", () => {
-      const data = [
-        { id: "a", role: { id: "r1", name: "Artist" } },
-        { id: "c", role: { id: "r2", name: "Backpacker" } },
-        { id: "c", role: { id: "r1", name: "Artist" } },
-      ];
-
-      expect(
-        new QueryableArray(data)
-          .where("id")
-          .is("c")
-          .and.where("role")
-          .its("id")
-          .is("r1"),
-      ).to.eql([data[2]]);
-    });
-
-    it("can filter via where in nested objects with or logic", () => {
-      const data = [
-        { id: "a", role: { id: "r1", name: "Artist" } },
-        { id: "b", role: { id: "r2", name: "Backpacker" } },
-        { id: "c", role: { id: "r1", name: "Artist" } },
-      ];
-
-      expect(
-        new QueryableArray(data)
-          .where("id")
-          .is("c")
-          .or.where("role")
           .its("name")
           .is("Artist"),
       ).to.eql([data[0], data[2]]);
@@ -142,7 +291,10 @@ describe("queryable clause (via where)", () => {
       ];
 
       expect(
-        new QueryableArray(data).where("roles").some().its("name").is("Artist"),
+        createQueryableClause((t) => t.roles, data)
+          .some()
+          .its("name")
+          .is("Artist"),
       ).to.eql([data[0], data[2]]);
     });
 
@@ -170,8 +322,7 @@ describe("queryable clause (via where)", () => {
       ];
 
       expect(
-        new QueryableArray(data)
-          .where("roles")
+        createQueryableClause((t) => t.roles, data)
           .some("role")
           .some("extra arbitrary layer")
           .some("role identifier")
@@ -179,81 +330,10 @@ describe("queryable clause (via where)", () => {
       ).to.eql([data[0], data[2]]);
     });
 
-    it("can combine 'some' filters via 'and'", () => {
-      const data = [
-        {
-          id: "a",
-          roles: [
-            { id: "r1", name: "Artist" },
-            { id: "r2", name: "Backpacker" },
-          ],
-        },
-        {
-          id: "b",
-          roles: [
-            { id: "r2", name: "Backpacker" },
-            { id: "r4", name: "Musician" },
-          ],
-        },
-        { id: "c", roles: [{ id: "r1", name: "Artist" }] },
-      ];
-
-      expect(
-        new QueryableArray(data)
-          .where("roles")
-          .some()
-          .its("name")
-          .is("Artist")
-          .and.where("roles")
-          .some()
-          .its("id")
-          .is("r2"),
-      ).to.eql([data[0]]);
-    });
-
-    it("can combine 'some' filters via 'or'", () => {
-      const data = [
-        {
-          id: "a",
-          roles: [
-            { id: "r1", name: "Artist" },
-            { id: "r2", name: "Backpacker" },
-          ],
-        },
-        {
-          id: "b",
-          roles: [
-            { id: "r2", name: "Backpacker" },
-            { id: "r4", name: "Musician" },
-          ],
-        },
-        { id: "c", roles: [{ id: "r1", name: "Artist" }] },
-      ];
-
-      expect(
-        new QueryableArray(data)
-          .where("roles")
-          .some()
-          .its("name")
-          .is("Artist")
-          .or.where("roles")
-          .some()
-          .its("id")
-          .is("r2"),
-      ).to.eql([data[0], data[1], data[2]]);
-    });
-
     it("can filter objects with highly irregular types", () => {
       type T = { a?: number; b?: { c?: string } };
       const data: T[] = [{ a: 1 }, { b: {} }, { b: { c: "abc" } }];
-      expect(
-        new QueryableArray(data)
-          .where("a")
-          .is(1)
-          .or.where("b")
-          .its("c")
-          .is("abc"),
-      ).to.eql([data[0], data[2]]);
+      expect(createQueryableClause((t) => t.a, data).is(1)).to.eql([data[0]]);
     });
   });
 
@@ -278,8 +358,7 @@ describe("queryable clause (via where)", () => {
       ];
 
       expect(
-        new QueryableArray(data)
-          .where("roles")
+        createQueryableClause((t) => t.roles, data)
           .every()
           .its("name")
           .is("Artist"),
@@ -300,77 +379,12 @@ describe("queryable clause (via where)", () => {
       ];
 
       expect(
-        new QueryableArray(data)
-          .where("roles")
+        createQueryableClause((t) => t.roles, data)
           .every("role")
           .every("extra arbitrary layer")
           .every("role identifier")
           .satisfies((x) => isString(x) || x < 3),
       ).to.eql([data[0], data[2]]);
-    });
-
-    it("can combine 'some' filters via 'and'", () => {
-      const data = [
-        {
-          id: "a",
-          roles: [
-            { id: "r1", name: "Artist" },
-            { id: "r2", name: "Backpacker" },
-          ],
-        },
-        {
-          id: "b",
-          roles: [
-            { id: "r2", name: "Backpacker" },
-            { id: "r4", name: "Musician" },
-          ],
-        },
-        { id: "c", roles: [{ id: "r1", name: "Artist" }] },
-      ];
-
-      expect(
-        new QueryableArray(data)
-          .where("roles")
-          .every("role")
-          .its("name")
-          .is("Artist")
-          .and.where("roles")
-          .every("role")
-          .its("id")
-          .satisfies((s) => isString(s)),
-      ).to.eql([data[2]]);
-    });
-
-    it("can combine 'every' filters via 'or'", () => {
-      const data = [
-        {
-          id: "a",
-          roles: [
-            { id: "r1", name: "Artist" },
-            { id: "r2", name: "Backpacker" },
-          ],
-        },
-        {
-          id: "b",
-          roles: [
-            { id: "r2", name: "Backpacker" },
-            { id: "r4", name: "Musician" },
-          ],
-        },
-        { id: "c", roles: [{ id: "r1", name: "Artist" }] },
-      ];
-
-      expect(
-        new QueryableArray(data)
-          .where("roles")
-          .every("role")
-          .its("name")
-          .is("Artist")
-          .or.where("roles")
-          .every("role")
-          .its("id")
-          .satisfies((s) => s === "r2" || s === "r4"),
-      ).to.eql([data[1], data[2]]);
     });
 
     it("can filter deeply nested arrays with every and some via where", () => {
@@ -393,16 +407,14 @@ describe("queryable clause (via where)", () => {
       ];
 
       expect(
-        new QueryableArray(data)
-          .where("roles")
+        createQueryableClause((t) => t.roles, data)
           .every("role")
           .some("role identifier")
           .is("Artist"),
       ).to.eql([data[2]]);
 
       expect(
-        new QueryableArray(data)
-          .where("roles")
+        createQueryableClause((t) => t.roles, data)
           .some("role")
           .every("role identifier")
           .is("Artist"),
@@ -411,8 +423,8 @@ describe("queryable clause (via where)", () => {
   });
 
   it("gracefully handles querying when the array is empty", () => {
-    expect(new QueryableArray<{ id: string }>([]).where("id").is("1")).to.eql(
-      [],
-    );
+    expect(
+      createQueryableClause<{ id: string }, string>((t) => t.id, []).is("1"),
+    ).to.eql([]);
   });
 });
