@@ -27,6 +27,6 @@ jobs:
       - name: "Install Deps"
         run: pnpm install
       - name: "Benchmark"
-        run: pnpm test:benchmark
-      - name: "Build"
-        run: pnpm build
+        run: pnpm test:benchmark --outputJson benchmark.json --watch false
+      - name: "Evaluate Benchmark"
+        run: node scripts/benchmarkEvaluator.js
