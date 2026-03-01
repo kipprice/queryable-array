@@ -499,17 +499,16 @@ export class QueryableArray<T> extends Array<T> {
   }
 
   public flat<A, D extends number = 1>(
-    this: A,
     depth?: D | undefined,
-  ): FlatArray<A, D>[] {
+  ): QueryableArray<FlatArray<A, D>> {
     return new QueryableArray(
       (this as QueryableArray<T>)._currentData.flat<T[], D>(depth),
-    ) as FlatArray<A, D>[];
+    ) as QueryableArray<FlatArray<A, D>>;
   }
 
   public flatMap<U>(
     callback: (value: T, index: number, array: T[]) => U | readonly U[],
-  ): U[] {
+  ): QueryableArray<U> {
     return new QueryableArray(this._currentData.flatMap<U>(callback));
   }
 
