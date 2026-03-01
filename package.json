@@ -32,7 +32,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kipprice>/queryable-array.git"
+    "url": "git+https://github.com/kipprice/queryable-array.git"
   },
   "bugs": {
     "url": "https://github.com/kipprice/queryable-array/issues"
