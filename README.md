@@ -1,8 +1,8 @@
 # Queryable Arrays
 
-[![Test Coverage](https://github.com/kipprice/queryable-array/actions/workflows/coverage.yml/badge.svg)](https://github.com/kipprice/queryable-array/actions/workflows/coverage.yml)
+[![100% Test Coverage](https://github.com/kipprice/queryable-array/actions/workflows/coverage.yml/badge.svg)](https://github.com/kipprice/queryable-array/actions/workflows/coverage.yml)
 [![Build](https://github.com/kipprice/queryable-array/actions/workflows/build.yml/badge.svg)](https://github.com/kipprice/queryable-array/actions/workflows/build.yml)
-[![Benchmark](https://github.com/kipprice/queryable-array/actions/workflows/benchmark.yml/badge.svg)](https://github.com/kipprice/queryable-array/actions/workflows/benchmark.yml)
+[![Benchmark (< 10x native arrays)](https://github.com/kipprice/queryable-array/actions/workflows/benchmark.yml/badge.svg)](https://github.com/kipprice/queryable-array/actions/workflows/benchmark.yml)
 
 
 A lightweight (14kb) TS-first querying language designed to make it easy to work with arrays that need significant filtering, joining, sorting, or mapping. This library has no external dependencies, and performance of the queryable array is within an order of magnitude of standard arrays, ensuring that if you could perform a query via standard array functions, you can probably use a queryable array to do the same, albeit a little more human readable.
