@@ -8,11 +8,11 @@ const BOLD = "\x1b[1m";
 const NC = "\x1b[0m";
 
 const main = async () => {
-  const data = await processStdInToJson();
+  const data = await processFile();
   formatReport(data);
 };
 
-const processStdInToJson = async () => {
+const processFile = async () => {
   const file = await fs.readFile("benchmark.json");
   return JSON.parse(file);
 };
