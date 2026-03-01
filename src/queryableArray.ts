@@ -3,7 +3,7 @@ import {
   type ElemType,
   type Key,
   type UnionToIntersection,
-} from "./_types";
+} from "./utils.types";
 import { assert } from "./assertions";
 import { createQueryableClause } from "./queryableClause";
 import type { QueryClause } from "./queryableClause.types";

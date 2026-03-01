@@ -1,4 +1,4 @@
-import type { Key } from "./_types";
+import type { Key } from "./utils.types";
 
 /**
  * verify if the provided test value is a string

@@ -1,4 +1,8 @@
-import type { NestedPartial, ElemType, UnionToIntersection } from "./_types";
+import type {
+  NestedPartial,
+  ElemType,
+  UnionToIntersection,
+} from "./utils.types";
 
 /**-------------------------------------------------------------------------
  * BaseQueryClause

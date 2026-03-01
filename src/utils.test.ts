@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { describe, expect, it } from "vitest";
-import type { NestedPartial } from "./_types";
+import type { NestedPartial } from "./utils.types";
 import {
   applyLogicToFlattenedGroups,
   arrayToMap,

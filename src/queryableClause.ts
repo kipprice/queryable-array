@@ -1,4 +1,4 @@
-import type { ElemType, NestedPartial } from "./_types";
+import type { ElemType, NestedPartial } from "./utils.types";
 import type {
   ComparableQueryClause,
   QueryClause,

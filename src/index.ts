@@ -1,4 +1,4 @@
-export type * from "./_types";
+export type * from "./utils.types";
 export type * from "./queryableClause.types";
 export type { QueryableArray } from "./queryableArray";
 
