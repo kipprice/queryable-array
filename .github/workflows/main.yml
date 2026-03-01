@@ -27,8 +27,6 @@ jobs:
         run: pnpm install
       - name: "Test"
         run: pnpm test --coverage.enabled true
-      - name: "Report Coverage"
-        uses: davelosert/vitest-coverage-report-action@v2
       - name: "Benchmark"
         run: pnpm test:benchmark
       - name: "Build"
