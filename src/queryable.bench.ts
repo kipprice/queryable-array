@@ -3,6 +3,7 @@
 import { bench, describe } from "vitest";
 import { queryable } from "./queryable";
 import { isMatch } from "./utils";
+import { QueryableArray } from "./queryableArray";
 
 const SMALL_ARRAY = Array.from({ length: 999 }, (_, i) => ({
   id: i % 10,
@@ -35,46 +36,37 @@ describe("query array benchmarks", () => {
   describe("instantiation", () => {
     describe("small dataset", () => {
       bench("new QueryableArray", () => {
-        queryable(SMALL_ARRAY);
+        new QueryableArray(SMALL_ARRAY);
       });
 
-      // because there is so much variance in array creation for smaller arrays
-      // we're opting for a worse implementation here to keep it closer to
-      // what the query array will need to do
-      bench("new Array via naive loop (baseline)", () => {
-        const newArr = new Array(SMALL_ARRAY.length);
-        let idx = SMALL_ARRAY.length;
-        while (idx--) {
-          newArr[idx] = SMALL_ARRAY[idx];
-        }
+      // we're using a more directly comparable version of creating a suplicate
+      // array, since the queryable array has to populate each index individually
+      bench("new Array via loop (baseline)", () => {
+        SMALL_ARRAY.map((e) => e);
       });
     });
 
     describe("medium dataset", () => {
       bench("new QueryableArray", () => {
-        queryable(MEDIUM_ARRAY);
+        new QueryableArray(MEDIUM_ARRAY);
       });
-      // because there is so much variance in array creation for smaller arrays
-      // we're opting for a worse implementation here to keep it closer to
-      // what the query array will need to do
-      bench("new Array via naive loop (baseline)", () => {
-        const newArr = new Array(MEDIUM_ARRAY.length);
-        let idx = MEDIUM_ARRAY.length;
-        while (idx--) {
-          newArr[idx] = MEDIUM_ARRAY[idx];
-        }
+
+      // we're using a more directly comparable version of creating a suplicate
+      // array, since the queryable array has to populate each index individually
+      bench("new Array via loop (baseline)", () => {
+        MEDIUM_ARRAY.map((e) => e);
       });
     });
 
     describe("large dataset", () => {
       bench("new QueryableArray", () => {
-        queryable(LARGE_ARRAY);
+        new QueryableArray(LARGE_ARRAY);
       });
 
-      // with a larger array, we measure between the more performant cases
-      // and our implementation
-      bench("new Array via spread (baseline)", () => {
-        [...LARGE_ARRAY];
+      // we're using a more directly comparable version of creating a suplicate
+      // array, since the queryable array has to populate each index individually
+      bench("new Array via loop (baseline)", () => {
+        LARGE_ARRAY.map((e) => e);
       });
     });
   });
