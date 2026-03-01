@@ -13,7 +13,7 @@ const processCoverageFile = async () => {
 const hasFullCoverage = (coverageReport) => {
   for (const key of ["lines", "statements", "functions", "branches"]) {
     const { pct } = coverageReport.total[key];
-    if (pct !== 100) {
+    if (pct === 100) {
       throw new Error("not 100% covered");
     }
   }
