@@ -29,6 +29,8 @@ jobs:
         run: pnpm test --coverage.enabled true
 
   benchmark:
+    runs-on: ubuntu-latest
+
     permissions:
       # Required to checkout the code
       contents: read
@@ -52,6 +54,8 @@ jobs:
         run: pnpm build
 
   build:
+    runs-on: ubuntu-latest
+
     permissions:
       # Required to checkout the code
       contents: read
