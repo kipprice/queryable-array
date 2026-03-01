@@ -5,7 +5,7 @@ on:
       - main
 
 jobs:
-  test:
+  coverage:
     runs-on: ubuntu-latest
 
     permissions:
@@ -27,7 +27,47 @@ jobs:
         run: pnpm install
       - name: "Test"
         run: pnpm test --coverage.enabled true
+
+  benchmark:
+    permissions:
+      # Required to checkout the code
+      contents: read
+      # Required to put a comment into the pull-request
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+      - name: "Install Node"
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20.x"
+          cache: "pnpm"
+      - name: "Install Deps"
+        run: pnpm install
       - name: "Benchmark"
         run: pnpm test:benchmark
+      - name: "Build"
+        run: pnpm build
+
+  build:
+    permissions:
+      # Required to checkout the code
+      contents: read
+      # Required to put a comment into the pull-request
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+      - name: "Install Node"
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20.x"
+          cache: "pnpm"
+      - name: "Install Deps"
+        run: pnpm install
       - name: "Build"
         run: pnpm build
