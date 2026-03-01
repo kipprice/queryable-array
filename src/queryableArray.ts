@@ -638,42 +638,38 @@ export class QueryableArray<T> extends Array<T> {
     return this._currentData.some(...args);
   }
 
-  public reduce(callbackFn: (acc: T, cur: T, idx: number, arr: T[]) => T): T;
-  public reduce(
-    callbackFn: (acc: T, cur: T, idx: number, arr: T[]) => T,
-    initialValue: T,
-  ): T;
-  public reduce<U>(
-    callbackFn: (acc: U, cur: T, idx: number, arr: T[]) => U,
-    initialValue: U,
-  ): U;
-  public reduce<U>(
-    callbackfn: (acc: T | U, cur: T, idx: number, arr: T[]) => T | U,
-    initialValue?: T | U,
-  ): T | U {
+  public reduce<
+    U = T,
+    RT extends U extends Array<infer E> ? QueryableArray<E> : U =
+      U extends Array<infer E> ? QueryableArray<E> : U,
+  >(
+    callbackfn: (acc: U, cur: T, idx: number, arr: T[]) => U,
+    initialValue?: U,
+  ): RT {
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-    return this._currentData.reduce(callbackfn as any, initialValue) as T | U;
+    const out = this._currentData.reduce(callbackfn as any, initialValue);
+    if (isArray(out)) {
+      return new QueryableArray(out) as RT;
+    } else {
+      return out as RT;
+    }
   }
 
-  public reduceRight(
-    callbackFn: (acc: T, cur: T, idx: number, arr: T[]) => T,
-  ): T;
-  public reduceRight(
-    callbackFn: (acc: T, cur: T, idx: number, arr: T[]) => T,
-    initialValue: T,
-  ): T;
-  public reduceRight<U>(
-    callbackFn: (acc: U, cur: T, idx: number, arr: T[]) => U,
-    initialValue: U,
-  ): U;
-  public reduceRight<U>(
-    callbackfn: (acc: T | U, cur: T, idx: number, arr: T[]) => T | U,
-    initialValue?: T | U,
-  ): T | U {
+  public reduceRight<
+    U = T,
+    RT extends U extends Array<infer E> ? QueryableArray<E> : U =
+      U extends Array<infer E> ? QueryableArray<E> : U,
+  >(
+    callbackfn: (acc: U, cur: T, idx: number, arr: T[]) => U,
+    initialValue?: U,
+  ): RT {
     /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-    return this._currentData.reduceRight(callbackfn as any, initialValue) as
-      | T
-      | U;
+    const out = this._currentData.reduceRight(callbackfn as any, initialValue);
+    if (isArray(out)) {
+      return new QueryableArray(out) as RT;
+    } else {
+      return out as RT;
+    }
   }
 
   // ==========================================
