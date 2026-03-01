@@ -652,6 +652,7 @@ export class QueryableArray<T> extends Array<T> {
     callbackfn: (acc: T | U, cur: T, idx: number, arr: T[]) => T | U,
     initialValue?: T | U,
   ): T | U {
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
     return this._currentData.reduce(callbackfn as any, initialValue) as T | U;
   }
 
@@ -670,6 +671,7 @@ export class QueryableArray<T> extends Array<T> {
     callbackfn: (acc: T | U, cur: T, idx: number, arr: T[]) => T | U,
     initialValue?: T | U,
   ): T | U {
+    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
     return this._currentData.reduceRight(callbackfn as any, initialValue) as
       | T
       | U;

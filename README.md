@@ -1,6 +1,6 @@
 # Queryable Arrays
 
-A lightweight TS-first querying language designed to make it easy to work with arrays that need significant filtering, joining, sorting, or mapping. This library has no external dependencies, and performance of the queryable array is within an order of magnitude of standard arrays, ensuring that if you could perform a query via standard array functions, you can probably use a queryable array to do the same, albeit a little more human readable.
+A lightweight (14kb) TS-first querying language designed to make it easy to work with arrays that need significant filtering, joining, sorting, or mapping. This library has no external dependencies, and performance of the queryable array is within an order of magnitude of standard arrays, ensuring that if you could perform a query via standard array functions, you can probably use a queryable array to do the same, albeit a little more human readable.
 
 ## Why use this instead of standard array functions, `lodash`, etc.?
 

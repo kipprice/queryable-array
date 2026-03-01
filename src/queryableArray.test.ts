@@ -1,4 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
+/* eslint-disable @typescript-eslint/no-unused-expressions */
+
+import { describe, it, expect } from "vitest";
 import { QueryableArray } from "./queryableArray";
 import { isNumber, isString } from "./typeChecks";
 
@@ -8,7 +10,6 @@ describe("query array", () => {
   });
 
   it("instantiates local instances as regular arrays rather than QueryableArrays", () => {
-    const qa = new QueryableArray(["a", "b", "c"]);
     expect(QueryableArray[Symbol.species]).to.not.eql(QueryableArray);
   });
 
@@ -347,7 +348,6 @@ describe("query array", () => {
           ],
         },
       ];
-      const qa = new QueryableArray(data).extract("hobbies");
 
       expect(
         new QueryableArray(data).extract("hobbies").where("id").is("h1"),
@@ -414,7 +414,6 @@ describe("query array", () => {
           { id: "c", role: { id: "r3", name: "Artist" } },
         ];
 
-        const qa = new QueryableArray(data).where("role");
         expect(
           new QueryableArray(data).where("role").its("name").is("Artist"),
         ).to.eql([data[0], data[2]]);
@@ -832,7 +831,7 @@ describe("query array", () => {
       expect(
         new QueryableArray(data)
           .where("id")
-          .satisfies((id) => false)
+          .satisfies(() => false)
           .or.where("id")
           .lessThan(2)
           .or.where("id")

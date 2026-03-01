@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-expressions */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { bench, describe } from "vitest";
 import {
   applyLogicToFlattenedGroups,

@@ -160,6 +160,7 @@ export type QueryClause<T, R = QueryClauseResult<T>> =
         ? ComparableQueryClause<T, R>
         : BaseQueryClause<T, R>;
 
+/* eslint-disable-next-line @typescript-eslint/no-unused-vars */
 export interface QueryClauseResult<T> {
   isResolved: true;
   result: boolean;

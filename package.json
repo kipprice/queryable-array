@@ -3,33 +3,50 @@
   "version": "1.0.0",
   "description": "",
   "type": "module",
-  "main": "./dist/queryable.cjs",
-  "module": "./dist/queryable.mjs",
+  "main": "./dist/queryable-array.cjs",
+  "module": "./dist/queryable-array.mjs",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/queryable.mjs",
-      "require": "./dist/queryable.cjs"
+      "import": "./dist/queryable-array.mjs",
+      "require": "./dist/queryable-array.cjs"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "vite build && tsc --emitDeclarationOnly --outDir dist",
+    "build": "vite build",
     "test": "vitest",
     "test:benchmark": "vitest bench",
-    "test:benchmark:report": "vitest bench --outputJson benchmark.json --watch false && node scripts/benchmarkFormatter.js && rm benchmark.json"
+    "test:benchmark:report": "vitest bench --outputJson benchmark.json --watch false && node scripts/benchmarkFormatter.js && rm benchmark.json",
+    "lint": "eslint"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "query",
+    "filter"
+  ],
+  "author": "Kip Price",
+  "homepage": "https://practically.cool",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kipprice>/queryable-array.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kipprice/queryable-array/issues"
+  },
   "packageManager": "pnpm@10.17.1",
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^25.2.0",
     "@vitest/coverage-v8": "^4.0.18",
+    "eslint": "^10.0.2",
+    "globals": "^17.4.0",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1",
+    "vite-plugin-dts": "^4.5.4",
     "vitest": "^4.0.18"
   }
 }

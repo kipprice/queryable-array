@@ -65,7 +65,6 @@ describe("queryable clause (via where)", () => {
         { id: "c", role: { id: "r3", name: "Artist" } },
       ];
 
-      const qa = new QueryableArray(data).where("role");
       expect(
         new QueryableArray(data).where("role").its("name").is("Artist"),
       ).to.eql([data[0], data[2]]);

@@ -1,19 +1,22 @@
+/* eslint-disable @typescript-eslint/no-unused-expressions */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import { describe, expect, it } from "vitest";
+import type { NestedPartial } from "./_types";
 import {
+  applyLogicToFlattenedGroups,
   arrayToMap,
   bucketMultikeyArray,
   bucketsToMap,
+  END_GROUP_DIVIDER,
   flattenWithGroups,
   getKeys,
-  START_GROUP_DIVIDER,
+  isDeepEqual,
   isEqual,
   isMatch,
   reLayerGroups,
-  END_GROUP_DIVIDER,
-  isDeepEqual,
-  applyLogicToFlattenedGroups,
+  START_GROUP_DIVIDER,
 } from "./utils";
-import { describe, it, expect } from "vitest";
-import type { Key, NestedPartial } from "./_types";
 
 describe("utils", () => {
   describe("getKeys", () => {
@@ -28,7 +31,7 @@ describe("utils", () => {
       // ----
       // const untypedKeys: (keyof typeof obj)[] = Object.keys(obj)
       const keys: (keyof typeof obj)[] = getKeys(obj);
-      expect(true).to.be.true;
+      expect(keys).to.be.ok;
     });
 
     it("fails gracefully when the elem provided isn't an object", () => {

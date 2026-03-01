@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-expressions */
+
 import { bench, describe } from "vitest";
 import { queryable } from "./queryable";
 import { isMatch } from "./utils";
@@ -97,7 +99,6 @@ describe("query array benchmarks", () => {
     });
 
     describe("large dataset", () => {
-      const LARGE_QUERYABLE = queryable(LARGE_ARRAY);
       bench("QueryableArray.filter", () => {
         queryable([...LARGE_ARRAY]).filter((x) => x.id === 5);
       });
@@ -290,7 +291,7 @@ describe("query array benchmarks", () => {
     });
     bench("Array.filter + Array.some (baseline)", () => {
       queryable([...ARRAY_WITH_NESTED]).data.filter((x) =>
-        x.tags.some((t) => "tag-3"),
+        x.tags.some((t) => t === "tag-3"),
       );
     });
   });

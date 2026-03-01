@@ -1,6 +1,6 @@
 import { isDefined } from "./typeChecks";
 
-export function assert<T>(
+export function assert(
   test: boolean,
   message: string = "expected value to be true",
 ): asserts test {

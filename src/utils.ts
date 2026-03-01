@@ -1,17 +1,13 @@
-import { resolve } from "node:dns";
 import type { ElemType, Key, NestedPartial } from "./_types";
+import { assert } from "./assertions";
 import {
   isArray,
   isBoolean,
   isDefined,
-  isNumber,
-  isObject,
   isObjectOrArray,
   isPrimitive,
-  isString,
   isSymbol,
 } from "./typeChecks";
-import { assert } from "./assertions";
 
 /**
  * retrieve all keys for a given object, cast into `keyof` types of the same
@@ -44,7 +40,7 @@ export const getKeys = <T extends object>(object: T) => {
  *
  * @returns A map representation of the provided array
  */
-export const arrayToMap = <E extends unknown, V = E>(
+export const arrayToMap = <E, V = E>(
   array: E[],
   getKeyFn: (e: E) => Key,
   getValFn: (e: E) => V = (e) => e as unknown as V,
@@ -73,7 +69,7 @@ export const arrayToMap = <E extends unknown, V = E>(
  * @returns A list of bucket objects, containing their shared key and a list of
  *          all of the elements that are associated with that shared key
  */
-export const bucketMultikeyArray = <E extends unknown>(
+export const bucketMultikeyArray = <E>(
   array: E[],
   getBucketsFn: (e: E) => Key[],
 ) => {
@@ -102,7 +98,7 @@ export const bucketMultikeyArray = <E extends unknown>(
  *
  * @returns Map equivalent of the provided buckets
  */
-export const bucketsToMap = <E extends unknown>(
+export const bucketsToMap = <E>(
   buckets: {
     key: string;
     value: E[];
@@ -156,7 +152,7 @@ export const isEqual = <T>(a: T, b: T) => {
  *
  * @returns True if the base object matches te provided subset
  */
-export const isMatch = <T extends object, K extends keyof T = keyof T>(
+export const isMatch = <T extends object>(
   base: T,
   partial: NestedPartial<T>,
 ): boolean => {
@@ -255,10 +251,10 @@ export const flattenWithGroups = <
  * @returns An array flattened one layer with dividers marking the start and
  *          ends of the originally nested array
  */
-export const reLayerGroups = <E = any>(
+export const reLayerGroups = <E>(
   arr: (E | typeof START_GROUP_DIVIDER | typeof END_GROUP_DIVIDER)[],
 ) => {
-  let layers: any[][] = [[]];
+  const layers: unknown[][] = [[]];
   let currentLayer = 0;
 
   for (let idx = 0; idx < arr.length; idx += 1) {
@@ -300,12 +296,12 @@ export const reLayerGroups = <E = any>(
  * @returns True if the ultimate chain of array logic resolved to true;
  *          false otherwise
  */
-export const applyLogicToFlattenedGroups = <E = any>(
+export const applyLogicToFlattenedGroups = <E>(
   arr: (E | typeof START_GROUP_DIVIDER | typeof END_GROUP_DIVIDER)[],
   arrayLogic: ("some" | "every")[],
   resolver: (e: E) => boolean,
 ) => {
-  const layers: any[][] = [[]];
+  const layers: (E | boolean)[][] = [[]];
   let currentLayer = 0;
   let skipNextXEndGroups = -1;
 
@@ -375,7 +371,7 @@ export const applyLogicToFlattenedGroups = <E = any>(
       if (skipNextXEndGroups >= 0) {
         continue;
       }
-      layers[currentLayer]!.push(e);
+      layers[currentLayer]!.push(e!);
     }
   }
 

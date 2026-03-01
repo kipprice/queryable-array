@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-expressions */
+
 import { queryable, ql } from "./queryable";
 import { describe, it, expect } from "vitest";
 import { QueryableArray } from "./queryableArray";
@@ -430,10 +432,6 @@ describe("queryable", () => {
 
     describe("its", () => {
       it("check against sub properties", () => {
-        const x = queryable([{ data: { a: 1 } }, { data: { b: 1 } }])
-          .where("data")
-          .its("a");
-
         expect(
           queryable([{ data: { a: 1 } }, { data: { b: 1 } }])
             .where("data")

@@ -1,5 +1,8 @@
 import type { ElemType, NestedPartial } from "./_types";
-import type { QueryClause } from "./queryableClause.types";
+import type {
+  ComparableQueryClause,
+  QueryClause,
+} from "./queryableClause.types";
 import { isArray, isNumber, isObjectOrArray, isString } from "./typeChecks";
 import {
   applyLogicToFlattenedGroups,
@@ -24,7 +27,7 @@ export const createQueryableClause = <T, X, RT extends T[]>(
   ) => {
     type ZE = Z extends Array<unknown> ? ElemType<Z> : Z;
 
-    const _resolve = <Z>(resolver: (z: ZE) => boolean) => {
+    const _resolve = (resolver: (z: ZE) => boolean) => {
       const isAnd = logic === "and";
       const elems = isAnd ? currentData : originalData;
 
@@ -39,7 +42,11 @@ export const createQueryableClause = <T, X, RT extends T[]>(
 
         let result;
         if (shouldHandleAsArray) {
-          result = applyLogicToFlattenedGroups(z as any, arrayLogic, resolver);
+          result = applyLogicToFlattenedGroups(
+            z as Array<ZE>,
+            arrayLogic,
+            resolver,
+          );
         } else {
           result = resolver(z as ZE);
         }
@@ -59,7 +66,10 @@ export const createQueryableClause = <T, X, RT extends T[]>(
         isObjectOrArray(y)
           ? _resolve((z: ZE) => isEqual(z, y))
           : _resolve((z: ZE) => y === z),
+
+      /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
       eq: (y: ZE | null | undefined) => out.is(y as any),
+      /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
       equals: (y: ZE | null | undefined) => out.is(y as any),
 
       isNull: () => _resolve((z: ZE) => z === null),
@@ -79,7 +89,10 @@ export const createQueryableClause = <T, X, RT extends T[]>(
             return false;
           }
         }),
-      gt: (y: ZE) => (out as any).greaterThan(y),
+      gt: (y: ZE) =>
+        (out as unknown as ComparableQueryClause<string | number>).greaterThan(
+          y as string | number,
+        ),
 
       greaterThanOrEqualTo: (y: Z) =>
         _resolve((z: ZE) => {
@@ -89,7 +102,10 @@ export const createQueryableClause = <T, X, RT extends T[]>(
             return false;
           }
         }),
-      gte: (y: ZE) => (out as any).greaterThanOrEqualTo(y),
+      gte: (y: ZE) =>
+        (
+          out as unknown as ComparableQueryClause<string | number>
+        ).greaterThanOrEqualTo(y as string | number),
 
       lessThan: (y: ZE) =>
         _resolve((z: ZE) => {
@@ -99,7 +115,10 @@ export const createQueryableClause = <T, X, RT extends T[]>(
             return false;
           }
         }),
-      lt: (y: ZE) => (out as any).lessThan(y),
+      lt: (y: ZE) =>
+        (out as unknown as ComparableQueryClause<string | number>).lessThan(
+          y as string | number,
+        ),
 
       lessThanOrEqualTo: (y: ZE) =>
         _resolve((z: ZE) => {
@@ -109,7 +128,10 @@ export const createQueryableClause = <T, X, RT extends T[]>(
             return false;
           }
         }),
-      lte: (y: ZE) => (out as any).lessThanOrEqualTo(y),
+      lte: (y: ZE) =>
+        (
+          out as unknown as ComparableQueryClause<string | number>
+        ).lessThanOrEqualTo(y as string | number),
 
       matches: (y: NestedPartial<ZE>) =>
         _resolve((z: ZE) => {

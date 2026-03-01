@@ -43,13 +43,13 @@ export function isArray<T = unknown>(test: unknown): test is Array<T> {
 /**
  * verify if the provided test value is an object
  */
-export function isObject<T = unknown>(test: unknown): test is object {
+export function isObject<T extends object>(test: unknown): test is T {
   return typeof test === "object" && !isArray(test) && test !== null;
 }
-
 /**
  * verify if the provided test value is a function
  */
+/* eslint-disable-next-line @typescript-eslint/no-unsafe-function-type */
 export function isFunction(test: unknown): test is Function {
   return typeof test === "function";
 }

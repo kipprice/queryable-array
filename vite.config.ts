@@ -1,15 +1,18 @@
 import { defineConfig } from "vitest/config";
 import { resolve } from "path";
+import dts from "vite-plugin-dts";
 
 export default defineConfig({
   build: {
     lib: {
       entry: resolve(__dirname, "src/index.ts"),
-      name: "queryable",
+      name: "queryable-array",
       formats: ["es", "cjs"],
-      fileName: (format) => `queryable.${format === "es" ? "mjs" : "cjs"}`,
+      fileName: (format) =>
+        `queryable-array.${format === "es" ? "mjs" : "cjs"}`,
     },
   },
+  plugins: [dts({ rollupTypes: true })],
   test: {
     globals: true,
     environment: "node",
