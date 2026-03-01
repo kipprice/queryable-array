@@ -28,5 +28,5 @@ jobs:
         run: pnpm install
       - name: "Benchmark"
         run: pnpm test:benchmark --outputJson benchmark.json --watch false
-      - name: "Evaluate Benchmark"
+      - name: "Ensure all benchmarks are < 10x baseline"
         run: node scripts/benchmarkEvaluator.js
